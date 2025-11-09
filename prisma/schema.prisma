@@ -995,6 +995,29 @@ enum CashbackStatus {
   CANCELLED     // Đã hủy
 }
 
+// Blockchain enums
+enum BlockchainNetworkType {
+  BSC_TESTNET
+  BSC_MAINNET
+  ETHEREUM_SEPOLIA
+  ETHEREUM_MAINNET
+  POLYGON_MUMBAI
+  POLYGON_MAINNET
+}
+
+enum SmartContractType {
+  CASHBACK_TOKEN
+  CASHBACK_MANAGER
+  CASHBACK_POOL
+}
+
+enum BlockchainTransactionStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+  DROPPED
+}
+
 model Cashback {
   id              String         @id @default(uuid())
   paymentId       String         @unique @map("payment_id")
@@ -1049,5 +1072,230 @@ model Cashback {
   @@index([txHash])
   @@index([blockchainNetwork])
   @@index([eligibleAt])
+  @@index([createdAt])
+}
+
+// Blockchain Integration Models
+
+// Blockchain Network Configuration
+model BlockchainNetwork {
+  id              String                  @id @default(uuid())
+  name            String                  @unique
+  type            BlockchainNetworkType
+  rpcUrl          String                  @map("rpc_url")
+  chainId         BigInt                  @map("chain_id")
+  nativeToken     String                  @map("native_token") // ETH, BNB, MATIC
+  explorerUrl     String?                 @map("explorer_url")
+  isActive        Boolean                 @default(true) @map("is_active")
+
+  // Network specific settings
+  gasLimit        BigInt?                 @map("gas_limit")
+  gasPrice        BigInt?                 @map("gas_price")
+  maxFeePerGas    BigInt?                 @map("max_fee_per_gas")
+
+  // Auditable fields
+  createdAt       DateTime                @default(now()) @map("created_at")
+  updatedAt       DateTime                @updatedAt @map("updated_at")
+  createdBy       String?                 @map("created_by")
+  updatedBy       String?                 @map("updated_by")
+
+  // Relations
+  contracts       SmartContract[]
+  transactions    BlockchainTransaction[]
+  events          BlockchainEvent[]
+
+  @@map("blockchain_networks")
+  @@index([type])
+  @@index([chainId])
+  @@index([isActive])
+  @@index([createdAt])
+}
+
+// Smart Contract Deployments
+model SmartContract {
+  id              String                  @id @default(uuid())
+  name            String
+  type            SmartContractType
+  networkId       String                  @map("network_id")
+  address         String
+  abi             Json                    // Contract ABI
+  bytecode        String?                 // Contract bytecode
+  deploymentTxHash String?                @unique @map("deployment_tx_hash")
+  deployerAddress String                  @map("deployer_address")
+
+  // Contract information
+  version         String                  @default("1.0.0")
+  sourceUrl       String?                 @map("source_url")
+  verified        Boolean                 @default(false)
+  verifiedAt      DateTime?               @map("verified_at")
+
+  // Status
+  isActive        Boolean                 @default(true) @map("is_active")
+
+  // Auditable fields
+  createdAt       DateTime                @default(now()) @map("created_at")
+  updatedAt       DateTime                @updatedAt @map("updated_at")
+  createdBy       String?                 @map("created_by")
+  updatedBy       String?                 @map("updated_by")
+
+  // Relations
+  network         BlockchainNetwork       @relation(fields: [networkId], references: [id], onDelete: Cascade)
+  transactions    BlockchainTransaction[]
+  events          BlockchainEvent[]
+
+  @@unique([networkId, address])
+  @@map("smart_contracts")
+  @@index([networkId])
+  @@index([type])
+  @@index([address])
+  @@index([verified])
+  @@index([isActive])
+  @@index([createdAt])
+}
+
+// Blockchain Transactions
+model BlockchainTransaction {
+  id              String                      @id @default(uuid())
+  txHash          String                      @unique @map("tx_hash")
+  networkId       String                      @map("network_id")
+  contractId      String?                     @map("contract_id")
+
+  // Transaction details
+  fromAddress     String                      @map("from_address")
+  toAddress       String                      @map("to_address")
+  value           String                      // Wei amount
+  data            String?                     // Transaction data
+  gasUsed         BigInt?                     @map("gas_used")
+  gasPrice        BigInt?                     @map("gas_price")
+  gasFee          Decimal?                    @map("gas_fee") @db.Decimal(20,8)
+
+  // Status
+  status          BlockchainTransactionStatus @default(PENDING)
+  blockNumber     BigInt?                     @map("block_number")
+  blockHash       String?                     @map("block_hash")
+  confirmations   Int                         @default(0)
+
+  // Timing
+  sentAt          DateTime                    @default(now()) @map("sent_at")
+  confirmedAt     DateTime?                   @map("confirmed_at")
+  failedAt        DateTime?                   @map("failed_at")
+
+  // Error handling
+  errorMessage    String?                     @map("error_message")
+  retryCount      Int                         @default(0) @map("retry_count")
+  lastRetryAt     DateTime?                   @map("last_retry_at")
+
+  // Metadata
+  metadata        Json?
+  note            String?
+
+  // Auditable fields
+  createdAt       DateTime                    @default(now()) @map("created_at")
+  updatedAt       DateTime                    @updatedAt @map("updated_at")
+
+  // Relations
+  network         BlockchainNetwork           @relation(fields: [networkId], references: [id], onDelete: Cascade)
+  contract        SmartContract?              @relation(fields: [contractId], references: [id], onDelete: SetNull)
+
+  @@map("blockchain_transactions")
+  @@index([networkId])
+  @@index([contractId])
+  @@index([txHash])
+  @@index([status])
+  @@index([fromAddress])
+  @@index([toAddress])
+  @@index([blockNumber])
+  @@index([sentAt])
+  @@index([confirmedAt])
+  @@index([createdAt])
+}
+
+// Blockchain Events
+model BlockchainEvent {
+  id              String                  @id @default(uuid())
+  networkId       String                  @map("network_id")
+  contractId      String                  @map("contract_id")
+
+  // Event details
+  eventName       String                  @map("event_name")
+  logIndex        Int                     @map("log_index")
+  transactionHash String                  @map("transaction_hash")
+  blockNumber     BigInt                  @map("block_number")
+  blockHash       String                  @map("block_hash")
+
+  // Event data
+  eventData       Json                    @map("event_data") // Decoded event parameters
+  rawLog          Json?                   @map("raw_log")
+
+  // Processing
+  processed       Boolean                 @default(false)
+  processedAt     DateTime?               @map("processed_at")
+  processingError String?                 @map("processing_error")
+
+  // Metadata
+  metadata        Json?
+
+  // Auditable fields
+  createdAt       DateTime                @default(now()) @map("created_at")
+  updatedAt       DateTime                @updatedAt @map("updated_at")
+
+  // Relations
+  network         BlockchainNetwork       @relation(fields: [networkId], references: [id], onDelete: Cascade)
+  contract        SmartContract           @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@map("blockchain_events")
+  @@unique([transactionHash, logIndex])
+  @@index([networkId])
+  @@index([contractId])
+  @@index([eventName])
+  @@index([blockNumber])
+  @@index([processed])
+  @@index([createdAt])
+}
+
+// Cashback Claims
+model CashbackClaim {
+  id              String                  @id @default(uuid())
+  cashbackId      String                  @unique @map("cashback_id")
+  userId          String                  @map("user_id")
+
+  // Claim information
+  amount          Decimal                 @db.Decimal(15,2)
+  claimedAt       DateTime                @default(now()) @map("claimed_at")
+  validityExpires DateTime                @map("validity_expires")
+
+  // Blockchain details
+  networkId       String?                 @map("network_id")
+  walletAddress   String                  @map("wallet_address")
+  txHash          String?                 @unique @map("tx_hash")
+
+  // Status
+  status          CashbackStatus          @default(PENDING)
+  claimedTxHash   String?                 @unique @map("claimed_tx_hash")
+
+  // Tracking
+  processedAt     DateTime?               @map("processed_at")
+  completedAt     DateTime?               @map("completed_at")
+  failedAt        DateTime?               @map("failed_at")
+  failureReason   String?                 @map("failure_reason")
+
+  // Retry logic
+  retryCount      Int                     @default(0) @map("retry_count")
+  maxRetries      Int                     @default(3) @map("max_retries")
+  lastRetryAt     DateTime?               @map("last_retry_at")
+
+  // Metadata
+  metadata        Json?
+  note            String?
+
+  // Auditable fields
+  createdAt       DateTime                @default(now()) @map("created_at")
+  updatedAt       DateTime                @updatedAt @map("updated_at")
+
+  @@map("cashback_claims")
+  @@index([userId])
+  @@index([status])
+  @@index([walletAddress])
+  @@index([claimedAt])
   @@index([createdAt])
 }

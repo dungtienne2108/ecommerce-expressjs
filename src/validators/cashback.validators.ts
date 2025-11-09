@@ -38,3 +38,76 @@ export const processCashbackSchema = Joi.object({
   limit: Joi.number().integer().min(1).max(100).default(50),
   maxRetries: Joi.number().integer().min(1).max(10).default(3),
 });
+
+// Blockchain cashback schemas
+export const claimCashbackSchema = Joi.object({
+  amount: Joi.number().positive().required().messages({
+    'number.positive': 'Amount must be positive',
+    'any.required': 'Amount is required',
+  }),
+  walletAddress: Joi.string().hex().length(42).optional().messages({
+    'string.hex': 'Invalid Ethereum address format',
+    'string.length': 'Ethereum address must be 42 characters',
+  }),
+});
+
+export const blockchainWebhookSchema = Joi.object({
+  event: Joi.string().required().messages({
+    'any.required': 'Event name is required',
+  }),
+  blockNumber: Joi.number().required().messages({
+    'any.required': 'Block number is required',
+  }),
+  transactionHash: Joi.string().hex().required().messages({
+    'any.required': 'Transaction hash is required',
+    'string.hex': 'Invalid transaction hash format',
+  }),
+  logIndex: Joi.number().optional(),
+  data: Joi.object().optional(),
+  blockHash: Joi.string().optional(),
+});
+
+export const deployContractSchema = Joi.object({
+  contractType: Joi.string()
+    .valid('CASHBACK_TOKEN', 'CASHBACK_MANAGER', 'CASHBACK_POOL')
+    .required()
+    .messages({
+      'any.only': 'Invalid contract type',
+      'any.required': 'Contract type is required',
+    }),
+  networkId: Joi.string().uuid().required().messages({
+    'any.required': 'Network ID is required',
+  }),
+  constructorArgs: Joi.array().required().messages({
+    'any.required': 'Constructor arguments are required',
+  }),
+});
+
+export const getTransactionSchema = Joi.object({
+  txHash: Joi.string().hex().required().messages({
+    'any.required': 'Transaction hash is required',
+    'string.hex': 'Invalid transaction hash format',
+  }),
+});
+
+export const getNetworksSchema = Joi.object({
+  type: Joi.string()
+    .valid(
+      'BSC_TESTNET',
+      'BSC_MAINNET',
+      'ETHEREUM_SEPOLIA',
+      'ETHEREUM_MAINNET',
+      'POLYGON_MUMBAI',
+      'POLYGON_MAINNET'
+    )
+    .optional(),
+});
+
+export const processPendingSchema = Joi.object({
+  batchSize: Joi.number().integer().min(1).max(100).default(10),
+});
+
+export const retryFailedSchema = Joi.object({
+  maxRetries: Joi.number().integer().min(1).max(10).default(3),
+  batchSize: Joi.number().integer().min(1).max(100).default(10),
+});

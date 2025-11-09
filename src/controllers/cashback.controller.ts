@@ -276,6 +276,113 @@ export class CashbackController {
       res.json(response);
     }
   );
+
+  /**
+   * @desc Get user cashback balance from blockchain
+   * @route GET /api/cashback/balance
+   */
+  getBalance = asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
+      const userId = req.user?.id;
+      if (!userId) {
+        throw new ValidationError('User ID not found');
+      }
+
+      const result = await cashbackService.getUserCashbackBalance(userId);
+
+      const response: ApiResponse = {
+        success: true,
+        data: result,
+        message: 'Cashback balance retrieved successfully',
+      };
+      res.json(response);
+    }
+  );
+
+  /**
+   * @desc Claim cashback to user wallet
+   * @route POST /api/cashback/claim
+   */
+  claimCashback = asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
+      const userId = req.user?.id;
+      if (!userId) {
+        throw new ValidationError('User ID not found');
+      }
+
+      const { amount } = req.body;
+      if (!amount || amount <= 0) {
+        throw new ValidationError('Invalid amount');
+      }
+
+      const result = await cashbackService.claimCashback(userId, amount);
+
+      const response: ApiResponse = {
+        success: true,
+        data: result,
+        message: 'Cashback claim submitted successfully',
+      };
+      res.status(201).json(response);
+    }
+  );
+
+  /**
+   * @desc Get blockchain networks
+   * @route GET /api/cashback/networks
+   */
+  getNetworks = asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
+      const result = await cashbackService.getBlockchainNetworks();
+
+      const response: ApiResponse = {
+        success: true,
+        data: result,
+        message: 'Blockchain networks retrieved successfully',
+      };
+      res.json(response);
+    }
+  );
+
+  /**
+   * @desc Handle blockchain webhook
+   * @route POST /api/cashback/webhook
+   */
+  handleWebhook = asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
+      const payload = req.body;
+
+      // Verify webhook signature here
+      await cashbackService.processBlockchainWebhook(payload);
+
+      const response: ApiResponse = {
+        success: true,
+        message: 'Webhook processed successfully',
+      };
+      res.json(response);
+    }
+  );
+
+  /**
+   * @desc Get blockchain transaction status
+   * @route GET /api/cashback/transaction/:txHash
+   */
+  getTransaction = asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
+      const { txHash } = req.params;
+      if (!txHash) {
+        throw new ValidationError('Transaction hash is required');
+      }
+
+      const result = await cashbackService.getTransactionStatus(txHash);
+
+      const response: ApiResponse = {
+        success: true,
+        data: result,
+        message: 'Transaction status retrieved successfully',
+      };
+      res.json(response);
+    }
+  );
 }
 
 export const cashbackController = new CashbackController();
