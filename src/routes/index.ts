@@ -8,6 +8,7 @@ import cartRoutes from './cart.routes';
 import orderRoutes from './order.routes';
 import adminRoutes from './admin.routes';
 import categoryRoutes from './category.route';
+import chatRoutes from './chat.routes';
 
 const router = Router();
 
@@ -24,6 +25,7 @@ router.get('/', (req, res) => {
         products: '/api/products',
         shops: '/api/shops',
         cart: '/api/cart',
+        chat: '/api/chat',
       },
     },
   });
@@ -38,5 +40,6 @@ router.use('/api/cart', cartRoutes);
 router.use('/api/orders', orderRoutes);
 router.use('/api/admin', adminRoutes);
 router.use('/api/categories', categoryRoutes);
+router.use('/api/chat', chatRoutes);
 
 export default router;

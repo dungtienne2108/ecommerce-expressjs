@@ -252,8 +252,8 @@ model User {
 
   // relation
   shop Shop? @relation("ShopOwner")
-  cart          Cart?  
-  approvedShops Shop[]     @relation("ShopApprover") 
+  cart          Cart?
+  approvedShops Shop[]     @relation("ShopApprover")
   reviewedKycs  KycData[]  @relation("KycReviewer")
   kycData       KycData[]
   roles     UserRole[]
@@ -261,6 +261,8 @@ model User {
   activities    UserActivity[]
   orders Order[]
   cashbacks     Cashback[]
+  conversationParticipants ConversationParticipant[]
+  messages      Message[]
 
   @@map("users")
   @@index([email])
@@ -370,6 +372,7 @@ model Shop {
   products Product[] // 1 shop có nhiều products
   kycData  KycData[]  @relation("ShopKyc")
   orders   Order[]
+  conversations Conversation[]
   
   @@map("shops")
   @@unique([bankName, bankAccountNumber])
@@ -1298,4 +1301,174 @@ model CashbackClaim {
   @@index([walletAddress])
   @@index([claimedAt])
   @@index([createdAt])
+}
+
+// Chat Support System
+enum ConversationType {
+  CUSTOMER_SUPPORT  // Khách hàng chat với shop
+  SHOP_TO_CUSTOMER  // Shop chat với khách
+  ADMIN_SUPPORT     // Admin hỗ trợ
+}
+
+enum ConversationStatus {
+  ACTIVE    // Đang hoạt động
+  WAITING   // Chờ phản hồi
+  RESOLVED  // Đã giải quyết
+  CLOSED    // Đã đóng
+}
+
+enum MessageType {
+  TEXT      // Tin nhắn văn bản
+  IMAGE     // Hình ảnh
+  FILE      // File đính kèm
+  SYSTEM    // Thông báo hệ thống
+  ORDER     // Thông tin đơn hàng
+  PRODUCT   // Thông tin sản phẩm
+}
+
+enum MessageStatus {
+  SENT      // Đã gửi
+  DELIVERED // Đã nhận
+  READ      // Đã đọc
+  FAILED    // Gửi thất bại
+}
+
+enum ParticipantRole {
+  CUSTOMER   // Khách hàng
+  SHOP_OWNER // Chủ shop
+  ADMIN      // Quản trị viên
+  SYSTEM     // Hệ thống
+}
+
+// Cuộc hội thoại
+model Conversation {
+  id              String             @id @default(uuid())
+  type            ConversationType   @default(CUSTOMER_SUPPORT)
+  status          ConversationStatus @default(ACTIVE)
+
+  // Liên quan đến shop (nếu có)
+  shopId          String?            @map("shop_id")
+
+  // Tiêu đề và mô tả
+  title           String?            // Tiêu đề cuộc trò chuyện
+  subject         String?            // Chủ đề (order issue, product question, etc.)
+
+  // Metadata
+  lastMessageAt   DateTime?          @map("last_message_at")
+  lastMessageText String?            @map("last_message_text")
+
+  // Tracking
+  totalMessages   Int                @default(0) @map("total_messages")
+  unreadCount     Int                @default(0) @map("unread_count") // Số tin chưa đọc
+
+  // Priority
+  priority        Int                @default(0) // 0: normal, 1: high, 2: urgent
+
+  // Tags for filtering
+  tags            String[]           @default([])
+
+  // Timestamps
+  resolvedAt      DateTime?          @map("resolved_at")
+  closedAt        DateTime?          @map("closed_at")
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
+
+  // Relations
+  shop            Shop?              @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  participants    ConversationParticipant[]
+  messages        Message[]
+
+  @@map("conversations")
+  @@index([shopId])
+  @@index([type])
+  @@index([status])
+  @@index([lastMessageAt])
+  @@index([priority])
+  @@index([createdAt])
+}
+
+// Người tham gia cuộc hội thoại
+model ConversationParticipant {
+  id              String          @id @default(uuid())
+  conversationId  String          @map("conversation_id")
+  userId          String          @map("user_id")
+  role            ParticipantRole @default(CUSTOMER)
+
+  // Tracking
+  joinedAt        DateTime        @default(now()) @map("joined_at")
+  leftAt          DateTime?       @map("left_at")
+  lastReadAt      DateTime?       @map("last_read_at")
+  unreadCount     Int             @default(0) @map("unread_count")
+
+  // Settings
+  isMuted         Boolean         @default(false) @map("is_muted")
+  isActive        Boolean         @default(true) @map("is_active")
+
+  // Timestamps
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  // Relations
+  conversation    Conversation    @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@map("conversation_participants")
+  @@index([conversationId])
+  @@index([userId])
+  @@index([role])
+  @@index([isActive])
+  @@index([createdAt])
+}
+
+// Tin nhắn
+model Message {
+  id              String        @id @default(uuid())
+  conversationId  String        @map("conversation_id")
+  senderId        String        @map("sender_id")
+
+  // Nội dung
+  type            MessageType   @default(TEXT)
+  content         String        @db.Text // Nội dung tin nhắn
+  status          MessageStatus @default(SENT)
+
+  // File attachments (nếu có)
+  attachments     Json?         // Array of {url, type, name, size}
+
+  // Reference to order or product
+  orderId         String?       @map("order_id")
+  productId       String?       @map("product_id")
+
+  // Metadata
+  metadata        Json?         // Thông tin bổ sung
+
+  // Reply to another message
+  replyToId       String?       @map("reply_to_id")
+
+  // Timestamps
+  sentAt          DateTime      @default(now()) @map("sent_at")
+  deliveredAt     DateTime?     @map("delivered_at")
+  readAt          DateTime?     @map("read_at")
+  editedAt        DateTime?     @map("edited_at")
+  deletedAt       DateTime?     @map("deleted_at")
+
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  conversation    Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender          User          @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  replyTo         Message?      @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies         Message[]     @relation("MessageReplies")
+
+  @@map("messages")
+  @@index([conversationId])
+  @@index([senderId])
+  @@index([type])
+  @@index([status])
+  @@index([orderId])
+  @@index([productId])
+  @@index([sentAt])
+  @@index([createdAt])
+  @@index([deletedAt])
 }
