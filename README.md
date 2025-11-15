@@ -352,7 +352,7 @@ npm run check-ssl        # Kiểm tra SSL certificates
 
  
 
-### Layered Architecture
+### Kiến trúc dự án
 
  
 
@@ -428,12 +428,12 @@ Chi tiết schema xem tại: `prisma/schema.prisma`
 
 ```
 
-http://localhost:5000/api/v1
+http://localhost:5000/api/
 
 ```
  
 
-### Authentication
+### Xác thực
 
  
 
@@ -449,7 +449,7 @@ Authorization: Bearer <your_jwt_token>
 
  
 
-## Security Features
+## Bảo mật
 
  
 
