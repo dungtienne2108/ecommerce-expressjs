@@ -10,13 +10,14 @@ import { RoleType, UserStatus } from '@prisma/client';
 
 const router = Router();
 
-router.get('/:id', authenticateToken, userController.getUserById);
+router.get(
+  '/:id',
+  combineMiddleware(authenticateToken, requireRole(RoleType.SYSTEM_ADMIN)),
+  userController.getUserById
+);
 router.get(
   '/',
-  combineMiddleware(
-    authenticateToken,
-    requireRole(RoleType.SYSTEM_ADMIN)
-  ),
+  combineMiddleware(authenticateToken, requireRole(RoleType.SYSTEM_ADMIN)),
   userController.getUsers
 );
 router.put('/activate', authenticateToken, userController.activate);

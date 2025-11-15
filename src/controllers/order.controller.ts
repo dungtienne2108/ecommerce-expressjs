@@ -6,7 +6,7 @@ import {
   getOrdersQuerySchema,
   updateOrderStatusSchema,
 } from '../validators/order.validators';
-import { ValidationError } from '../errors/AppError';
+import { UnauthorizedError, ValidationError } from '../errors/AppError';
 import { orderService } from '../config/container';
 import { ApiResponse } from '../types/common';
 import { OrderFilters } from '../types/order.types';
@@ -174,7 +174,7 @@ export class OrderController {
 
       const userId = req.user?.id;
       if (!userId) {
-        throw new ValidationError('User chưa đăng nhập');
+        throw new UnauthorizedError('User chưa đăng nhập');
       }
 
       const result = await orderService.updateOrderStatus(

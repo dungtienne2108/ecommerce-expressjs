@@ -468,3 +468,12 @@ Authorization: Bearer <your_jwt_token>
 - **SQL Injection Protection**: Prisma ORM
 
 - **HTTPS Support**: Optional SSL/TLS
+
+
+## Giao diện web
+![Giao diện đăng nhập](images/{67432347-2097-4190-8DFC-8EC4F136659E}.png)
+![Giao diện trang chủ](images/{2B418E0D-C23D-4E43-BF6A-2A1AFCA7B4AC}.png)
+![Giao diện giỏ hàng](images/{B65DAEE6-C0AF-44A9-90F0-D045C0FAA95A}.png)
+![Giao diện sản phẩm](images/{253A6EDE-D01E-42EB-871A-20E29C226D57}.png)
+![Giao diện chi tiết sản phẩm](images/{E0518F06-13B4-43AB-B19A-C78963134AEE}.png)
+![Giao diện admin](images/{45A62738-9C2F-4CAF-8098-FA34681E47C4}.png)

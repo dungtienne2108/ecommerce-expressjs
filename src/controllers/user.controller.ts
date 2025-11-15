@@ -10,12 +10,17 @@ export class UserController {
   getUserById = asyncHandler(
     async (req: Request, res: Response): Promise<void> => {
       const userId = req.user?.id;
+      const id = req.params.id;
 
       if (!userId) {
         throw new ValidationError('Không tìm thấy user');
       }
 
-      const user = await userService.getUserById(userId);
+      if (id && id !== userId && req.user?.roles.every(role => role.type !== 'SYSTEM_ADMIN')) {
+        throw new ValidationError('Bạn không có quyền truy cập user này');
+      }
+
+      const user = await userService.getUserById(id || userId);
 
       if (!user) {
         throw new ValidationError(`Không tìm thấy user với id : ${userId}`);

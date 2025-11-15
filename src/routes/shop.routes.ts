@@ -46,7 +46,8 @@ router.put(
   '/:id/submit-approval',
   combineMiddleware(
     authenticateToken,
-    requireStatus([UserStatus.ACTIVE])
+    requireStatus([UserStatus.ACTIVE]),
+    requireRole(RoleType.SYSTEM_ADMIN, RoleType.SELLER)
   ),
   ActivityLogger.logMiddleware(PermissionAction.UPDATE, PermissionModule.SHOP_MANAGEMENT),
   shopController.submitForApproval
@@ -55,7 +56,8 @@ router.put(
   '/:id/approval',
   combineMiddleware(
     authenticateToken,
-    requireStatus([UserStatus.ACTIVE])
+    requireStatus([UserStatus.ACTIVE]),
+    requireRole(RoleType.SYSTEM_ADMIN)
   ),
   ActivityLogger.logMiddleware(PermissionAction.UPDATE, PermissionModule.SHOP_MANAGEMENT),
   shopController.approval
@@ -64,7 +66,8 @@ router.put(
   '/:id/reject',
   combineMiddleware(
     authenticateToken,
-    requireStatus([UserStatus.ACTIVE])
+    requireStatus([UserStatus.ACTIVE]),
+    requireRole(RoleType.SYSTEM_ADMIN)
   ),
   ActivityLogger.logMiddleware(PermissionAction.UPDATE, PermissionModule.SHOP_MANAGEMENT),
   shopController.reject

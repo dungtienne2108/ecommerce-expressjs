@@ -528,6 +528,16 @@ export class OrderService {
       const order = await uow.orders.findById(orderId);
       if (!order) throw new NotFoundError('Đơn hàng không tồn tại');
 
+      const roles = await uow.userRoles.findByUserIdWithRoles(updatedBy);
+      const isAdmin = roles.some((r) => r.role.type === 'SYSTEM_ADMIN');
+      
+      if (order.userId !== updatedBy && !isAdmin) {
+        const shop = await uow.shops.findById(order.shopId);
+        if (!shop || shop.ownerId !== updatedBy) {
+          throw new ForbiddenError('Bạn không có quyền cập nhật đơn hàng này');
+        }
+      }
+
       // kiểm tra tính hợp lệ của việc chuyển trạng thái
       this.validateStatusTransition(order.status, input.status);
 

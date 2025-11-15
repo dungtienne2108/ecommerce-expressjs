@@ -8,7 +8,6 @@ import {
 } from '../middleware/auth.middleware';
 import { productController } from '../controllers/product.controller';
 import { combineMiddleware } from '../utils/middleware.util';
-import { shopService } from '../config/container';
 import { PermissionAction, PermissionModule, RoleType } from '@prisma/client';
 import { UserStatus } from '../constants/status';
 import { ActivityLogger } from '../services/logger.service';
