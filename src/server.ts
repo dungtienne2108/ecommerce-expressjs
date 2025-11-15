@@ -3,6 +3,8 @@ import { createApp } from './app';
 import { testDatabaseConnection, disconnectDatabase } from './config/prisma';
 import { redis } from './config/redis';
 import { cashbackCronService } from './config/container';
+import { createSocketServer, setSocketServer } from './config/socket';
+import { initializeSocketHandlers } from './sockets';
 
 let server: http.Server;
 
@@ -12,9 +14,16 @@ export async function startServer(port: number) {
   await redis.connect();
 
   const app = createApp();
-  server = app.listen(port, () => {
+  server = http.createServer(app);
+
+  const io = createSocketServer(server);
+  setSocketServer(io);
+  initializeSocketHandlers(io);
+
+  server.listen(port, () => {
     console.log(`🚀 Server chạy ở cổng :${port}`);
     console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`Socket.IO is running`);
 
     // chạy cronjobcashbackCronService.start();
     

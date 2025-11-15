@@ -1,12 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
 import cors, { CorsOptions } from 'cors';
 
-const corsConfig: CorsOptions = {
+export const corsConfig: CorsOptions = {
   origin: (origin, callback) => {
     const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
       'http://localhost:3000',
       'http://localhost:3001',
       'http://localhost:5173',
+      'https://admin.socket.io'
     ];
 
     if (!origin) return callback(null, true);
