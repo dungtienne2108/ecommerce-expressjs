@@ -263,8 +263,8 @@ export class CashbackController {
 
       const result = await cashbackService.getCashbackStatistics({
         userId: userId as string,
-        startDate: startDate ? new Date(startDate as string) : undefined,
-        endDate: endDate ? new Date(endDate as string) : undefined,
+        startDate: startDate ? new Date(startDate as string) : new Date(0),
+        endDate: endDate ? new Date(endDate as string) : new Date(),
         status: status as any,
       });
 

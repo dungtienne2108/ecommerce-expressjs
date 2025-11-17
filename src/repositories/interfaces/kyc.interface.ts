@@ -1,3 +1,7 @@
+import { DocumentStatus, KycData, KycDocument, KycHistory, KycStatus, Prisma } from '@prisma/client';
+import { KycDataFilters, KycDataIncludes,  KycDataWithRelations} from '../../types/kyc.types';
+import { PaginationParams } from '../../types/common';
+
 export interface IKycDataRepository {  
   /**
    * Tạo mới một bản ghi KYC
@@ -12,7 +16,7 @@ export interface IKycDataRepository {
    * @param include - Các quan hệ cần include khi truy vấn (tùy chọn)
    * @returns Promise trả về đối tượng KycData với quan hệ hoặc null nếu không tìm thấy
    */
-  findById(id: string, include?: KycDataIncludes): Promise<KycDataWithRelations | null>;
+  findById(id: string, include?: KycDataIncludes): Promise<KycData | null>;
   
   /**
    * Tìm kiếm bản ghi KYC theo ID của shop

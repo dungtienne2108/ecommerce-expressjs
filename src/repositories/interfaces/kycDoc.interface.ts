@@ -1,3 +1,5 @@
+import { Prisma, KycDocument, DocumentType, DocumentStatus } from "@prisma/client";
+
 export interface IKycDocumentRepository {
   /**
    * Tạo mới một tài liệu KYC

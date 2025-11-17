@@ -165,12 +165,12 @@ export class ShopService {
 
       for (const doc of data.documents) {
         await uow.kycDocuments.create({
-          kycDataId: kycData.id,
+          kycData: { connect: { id: kycData.id } },
           type: doc.type,
           fileName: doc.fileName,
           fileUrl: doc.fileUrl,
-          fileSize: doc.fileSize,
-          mimeType: doc.mimeType,
+          fileSize: doc.fileSize ?? null,
+          mimeType: doc.mimeType ?? null,
         });
       }
 

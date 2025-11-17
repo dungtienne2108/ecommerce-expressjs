@@ -1,3 +1,4 @@
+import { KycStatus } from "@prisma/client";
 import { PaginationParams } from "./common";
 
 export interface KycDataFilters extends PaginationParams {
@@ -22,4 +23,17 @@ export interface KycDataResponse{
 
 export interface KycDocumentResponse{
   
+}
+
+export interface KycDataWithRelations {
+  id: string;
+  shopId: string;
+  userId: string;
+  status: KycStatus;
+  submittedAt: Date;
+  reviewedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  documents?: KycDocumentResponse[];
+  history?: any[];
 }

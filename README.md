@@ -475,6 +475,30 @@ Authorization: Bearer <your_jwt_token>
 
 - **HTTPS Support**: Optional SSL/TLS
 
+## Các kịch bản tấn công
+
+Người dùng truy cập vào trang Admin → Trả về 401/403.
+
+Người dùng gọi API Admin bằng Postman → Trả về 403.
+
+Người dùng sửa ID trong API để chỉnh thông tin tài khoản người khác (IDOR) → Trả về 403/404.
+
+Người dùng xem đơn hàng không thuộc sở hữu → Trả về 403/404.
+
+Người dùng gửi request để tự cập nhật role thành ADMIN → Trả về 403.
+
+Gửi request với token hết hạn hoặc không hợp lệ → Trả về 401.
+
+Gọi API lấy danh sách tất cả đơn hàng → Chỉ trả về đơn hàng của chính user hoặc 403.
+
+Chỉnh sửa payload JWT (fake role) → Backend từ chối vì signature sai.
+
+Gửi request API không kèm token → Trả về 401.
+
+Gọi API nhạy cảm dù UI đã ẩn chức năng → Trả về 403.
+
+User tự cập nhật trạng thái đơn hàng → Trả về 403.
+
 
 ## Giao diện web
 ![Giao diện đăng nhập](images/{67432347-2097-4190-8DFC-8EC4F136659E}.png)

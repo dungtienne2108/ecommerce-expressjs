@@ -8,7 +8,7 @@ import {
   PrismaClient,
 } from '@prisma/client';
 import { IKycDataRepository } from '../interfaces/kyc.interface';
-import { KycDataFilters } from '../../types/kyc.types';
+import { KycDataFilters, KycDataIncludes, KycDataWithRelations } from '../../types/kyc.types';
 import { PaginationParams } from '../../types/common';
 
 export class KycDataRepository implements IKycDataRepository {
@@ -18,8 +18,8 @@ export class KycDataRepository implements IKycDataRepository {
     return this.prisma.kycData.create({ data });
   }
 
-  async findById(id: string): Promise<KycData | null> {
-    return this.prisma.kycData.findUnique({ where: { id } });
+  async findById(id: string, includes?: KycDataIncludes): Promise<KycData | null> {
+    return this.prisma.kycData.findUnique({ where: { id }, include: includes ?? null });
   }
 
   async findByShopId(shopId: string): Promise<KycData | null> {
