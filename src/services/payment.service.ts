@@ -13,7 +13,9 @@ import redis from '../config/redis';
 import { CacheUtil } from '../utils/cache.util';
 
 export class PaymentService {
-  constructor(private uow: IUnitOfWork) {}
+  constructor(
+    private uow: IUnitOfWork,
+  ) {}
 
   /**
    * Tạo payment cho đơn hàng

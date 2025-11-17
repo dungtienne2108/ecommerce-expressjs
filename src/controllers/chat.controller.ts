@@ -3,11 +3,12 @@ import { ChatService } from '../services/chat.service';
 import { ConversationRepository } from '../repositories/implements/conversation.repository';
 import { MessageRepository } from '../repositories/implements/message.repository';
 import { prisma } from '../config/prisma';
+import { ApiResponse } from '../types/common';
+import { chatService } from '../config/container';
 
 // Initialize repositories và service
 const conversationRepo = new ConversationRepository(prisma);
 const messageRepo = new MessageRepository(prisma);
-const chatService = new ChatService(conversationRepo, messageRepo);
 
 /**
  * Chat Controller
@@ -30,15 +31,13 @@ export class ChatController {
 
       const conversations = await chatService.getUserConversations(userId, limit, offset);
 
-      res.json({
+      const response: ApiResponse = {
         success: true,
         data: conversations,
-        pagination: {
-          limit,
-          offset,
-          total: conversations.length,
-        },
-      });
+        message: 'Lấy danh sách conversations thành công',
+      }
+
+      res.json(response);
     } catch (error) {
       next(error);
     }
@@ -114,10 +113,12 @@ export class ChatController {
         return;
       }
 
-      res.json({
+      const response: ApiResponse = {
         success: true,
         data: conversation,
-      });
+      };
+
+      res.json(response);
     } catch (error) {
       next(error);
     }
@@ -155,15 +156,12 @@ export class ChatController {
         before,
       });
 
-      res.json({
+      const response: ApiResponse = {
         success: true,
         data: messages,
-        pagination: {
-          limit,
-          offset,
-          total: messages.length,
-        },
-      });
+        message: 'Lấy danh sách messages thành công',
+      };
+      res.json(response);
     } catch (error) {
       next(error);
     }
@@ -190,10 +188,12 @@ export class ChatController {
         type,
       });
 
-      res.status(201).json({
+      const response: ApiResponse = {
         success: true,
         data: conversation,
-      });
+      };
+
+      res.status(201).json(response);
     } catch (error) {
       next(error);
     }
@@ -232,10 +232,12 @@ export class ChatController {
         productId,
       });
 
-      res.status(201).json({
+      const response: ApiResponse = {
         success: true,
         data: message,
-      });
+      };
+
+      res.status(201).json(response);
     } catch (error) {
       next(error);
     }
@@ -265,10 +267,11 @@ export class ChatController {
 
       await chatService.markAsRead(id, userId, messageId);
 
-      res.json({
+      const response: ApiResponse = {
         success: true,
         message: 'Đã đánh dấu là đã đọc',
-      });
+      };
+      res.json(response);
     } catch (error) {
       next(error);
     }
@@ -297,10 +300,11 @@ export class ChatController {
 
       const conversation = await chatService.closeConversation(id, userId);
 
-      res.json({
+      const response: ApiResponse = {
         success: true,
         data: conversation,
-      });
+      };
+      res.json(response);
     } catch (error) {
       next(error);
     }
@@ -329,10 +333,11 @@ export class ChatController {
 
       const conversation = await chatService.resolveConversation(id, userId);
 
-      res.json({
+      const response: ApiResponse = {
         success: true,
         data: conversation,
-      });
+      };
+      res.json(response);
     } catch (error) {
       next(error);
     }
@@ -362,10 +367,11 @@ export class ChatController {
 
       const message = await chatService.editMessage(id, userId, content);
 
-      res.json({
+      const response: ApiResponse = {
         success: true,
         data: message,
-      });
+      };
+      res.json(response);
     } catch (error) {
       next(error);
     }
@@ -394,10 +400,11 @@ export class ChatController {
 
       await chatService.deleteMessage(id, userId);
 
-      res.json({
+      const response: ApiResponse = {
         success: true,
         message: 'Message đã được xóa',
-      });
+      };
+      res.json(response);
     } catch (error) {
       next(error);
     }
@@ -433,15 +440,12 @@ export class ChatController {
         offset
       );
 
-      res.json({
+      const response: ApiResponse = {
         success: true,
         data: conversations,
-        pagination: {
-          limit,
-          offset,
-          total: conversations.length,
-        },
-      });
+        message: 'Lấy danh sách conversations của shop thành công',
+      };
+      res.json(response);
     } catch (error) {
       next(error);
     }

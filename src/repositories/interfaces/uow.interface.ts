@@ -1,8 +1,11 @@
 import { ICartItemRepository, ICartRepository } from "./cart.interface";
 import { ICashbackRepository } from "./cashback.interface";
 import { ICategoryRepository, IProductCategoryRepository } from "./category.interface";
+import { IConversationRepository } from "./conversation.interface";
+import { IConversationParticipantRepository } from "./conversationParticipant.interface";
 import { IKycDataRepository } from "./kyc.interface";
 import { IKycDocumentRepository } from "./kycDoc.interface";
+import { IMessageRepository } from "./message.interface";
 import { IOrderItemRepository, IOrderRepository, IOrderStatusHistoryRepository } from "./order.interface";
 import { IPaymentRepository } from "./payment.interface";
 import { IRolePermissionRepository, IUserPermissionRepository } from "./permission.interface";
@@ -31,6 +34,9 @@ export interface IUnitOfWork {
   orderStatusHistory: IOrderStatusHistoryRepository;
   payments: IPaymentRepository;
   cashbacks: ICashbackRepository;
+  conversations: IConversationRepository;
+  messages: IMessageRepository;
+  conversationParticipants: IConversationParticipantRepository;
 
   executeInTransaction<T>(operation: (uow: IUnitOfWork) => Promise<T>): Promise<T>; // saveChanges
 }

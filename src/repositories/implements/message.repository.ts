@@ -206,7 +206,7 @@ export class MessageRepository implements IMessageRepository {
           },
         },
         orderBy: {
-          sentAt: 'desc',
+          sentAt: 'asc',
         },
         take: limit,
         skip: offset,

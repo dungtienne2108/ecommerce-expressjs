@@ -1,280 +1,419 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.20;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
 /**
  * @title CashbackPool
- * @dev Manages the liquidity pool for cashback rewards
+ * @dev Manages a liquidity pool for cashback distributions
+ * Allows depositing funds and managing rewards distribution
  */
-contract CashbackPool is Ownable, ReentrancyGuard {
-    // Pool token (can be USDT, USDC, or native token wrapper)
-    IERC20 public poolToken;
+contract CashbackPool is Ownable, ReentrancyGuard, Pausable {
+    // Token
+    IERC20 public cashbackToken;
 
-    // Cashback token address
-    address public cashbackTokenAddress;
-
-    // Total deposited in pool
-    uint256 public totalDeposited = 0;
-
-    // Total withdrawn from pool
-    uint256 public totalWithdrawn = 0;
-
-    // Pool deposit fee (basis points)
-    uint256 public depositFeePercentage = 0; // Default 0%
-
-    // Pool withdrawal fee (basis points)
-    uint256 public withdrawalFeePercentage = 100; // Default 1%
-
-    // Fee collector address
-    address public feeCollector;
-
-    // Pool status
-    bool public poolActive = true;
-
-    // User deposit records
-    struct DepositRecord {
-        address user;
-        uint256 amount;
-        uint256 timestamp;
+    // Structs
+    struct Pool {
+        uint256 totalDeposited; // Total funds deposited
+        uint256 totalDistributed; // Total funds distributed
+        uint256 availableBalance; // Currently available
+        bool active;
     }
 
-    // User withdrawal records
-    struct WithdrawalRecord {
-        address user;
+    struct Deposit {
+        address depositor;
         uint256 amount;
-        uint256 fee;
         uint256 timestamp;
+        string reason;
     }
 
-    // Mapping of user to deposits
-    mapping(address => DepositRecord[]) public userDeposits;
+    struct Withdrawal {
+        address recipient;
+        uint256 amount;
+        uint256 timestamp;
+        string reason;
+    }
 
-    // Mapping of user to withdrawals
-    mapping(address => WithdrawalRecord[]) public userWithdrawals;
+    // State variables
+    Pool public pool;
+    Deposit[] public deposits;
+    Withdrawal[] public withdrawals;
 
-    // Mapping of user to current balance
-    mapping(address => uint256) public userBalance;
+    mapping(address => uint256) public userDeposits;
+    mapping(address => uint256) public userWithdrawals;
+
+    address public operatorAddress;
+
+    // Constants
+    uint256 public constant MAX_POOL_SIZE = 1_000_000_000 * 10 ** 18; // 1 billion tokens
 
     // Events
-    event TokensDeposited(
-        address indexed user,
+    event PoolInitialized(uint256 timestamp);
+    event FundsDeposited(
+        address indexed depositor,
         uint256 amount,
-        uint256 fee,
+        string reason,
         uint256 timestamp
     );
-    event TokensWithdrawn(
-        address indexed user,
+    event FundsWithdrawn(
+        address indexed recipient,
         uint256 amount,
-        uint256 fee,
+        string reason,
         uint256 timestamp
     );
-    event DepositFeeUpdated(uint256 newFeePercentage);
-    event WithdrawalFeeUpdated(uint256 newFeePercentage);
-    event FeeCollectorUpdated(address newCollector);
-    event PoolStatusUpdated(bool active);
-    event CashbackTokenUpdated(address newTokenAddress);
+    event PoolActivated();
+    event PoolDeactivated();
+    event OperatorChanged(address indexed newOperator);
+    event LiquidityWarning(uint256 currentBalance, uint256 minimumRequired);
+
+    // Modifiers
+    modifier onlyOperator() {
+        require(
+            msg.sender == operatorAddress || msg.sender == owner(),
+            "Only operator or owner"
+        );
+        _;
+    }
+
+    modifier poolActive() {
+        require(pool.active, "Pool is not active");
+        _;
+    }
 
     /**
      * @dev Constructor
-     * @param _poolToken Address of the pool token (USDT, USDC, etc.)
-     * @param _cashbackTokenAddress Address of the cashback token
-     * @param _feeCollector Address to collect fees
+     * @param _token Address of CashbackToken
+     * @param _operator Initial operator address
      */
-    constructor(
-        address _poolToken,
-        address _cashbackTokenAddress,
-        address _feeCollector
-    ) {
-        require(_poolToken != address(0), "CashbackPool: invalid pool token");
-        require(_cashbackTokenAddress != address(0), "CashbackPool: invalid cashback token");
-        require(_feeCollector != address(0), "CashbackPool: invalid fee collector");
+    constructor(address _token, address _operator) Ownable(msg.sender) {
+        require(_token != address(0), "Invalid token address");
+        require(_operator != address(0), "Invalid operator address");
 
-        poolToken = IERC20(_poolToken);
-        cashbackTokenAddress = _cashbackTokenAddress;
-        feeCollector = _feeCollector;
+        cashbackToken = IERC20(_token);
+        operatorAddress = _operator;
+
+        pool = Pool({
+            totalDeposited: 0,
+            totalDistributed: 0,
+            availableBalance: 0,
+            active: false
+        });
     }
 
     /**
-     * @dev Deposit tokens into the pool
-     * @param _amount Amount to deposit
+     * @dev Activate pool
      */
-    function deposit(uint256 _amount) external nonReentrant {
-        require(poolActive, "CashbackPool: pool is inactive");
-        require(_amount > 0, "CashbackPool: invalid amount");
+    function activatePool() external onlyOwner {
+        pool.active = true;
+        emit PoolActivated();
+    }
+
+    /**
+     * @dev Deactivate pool
+     */
+    function deactivatePool() external onlyOwner {
+        pool.active = false;
+        emit PoolDeactivated();
+    }
+
+    /**
+     * @dev Deposit funds into pool
+     * Must have approved token first
+     */
+    function depositFunds(uint256 _amount, string memory _reason)
+        external
+        onlyOperator
+        nonReentrant
+        whenNotPaused
+    {
+        require(_amount > 0, "Amount must be > 0");
         require(
-            poolToken.transferFrom(msg.sender, address(this), _amount),
-            "CashbackPool: transfer failed"
+            pool.totalDeposited + _amount <= MAX_POOL_SIZE,
+            "Exceeds max pool size"
         );
 
-        // Calculate fee
-        uint256 fee = (_amount * depositFeePercentage) / 10000;
-        uint256 amountAfterFee = _amount - fee;
-
-        // Update balance
-        userBalance[msg.sender] += amountAfterFee;
-        totalDeposited += amountAfterFee;
-
-        // Record deposit
-        userDeposits[msg.sender].push(
-            DepositRecord({user: msg.sender, amount: amountAfterFee, timestamp: block.timestamp})
+        // Transfer tokens from operator to pool
+        require(
+            cashbackToken.transferFrom(msg.sender, address(this), _amount),
+            "Transfer failed"
         );
 
-        // Transfer fee to collector
-        if (fee > 0) {
-            require(
-                poolToken.transfer(feeCollector, fee),
-                "CashbackPool: fee transfer failed"
-            );
-        }
+        // Update pool state
+        pool.totalDeposited += _amount;
+        pool.availableBalance += _amount;
 
-        emit TokensDeposited(msg.sender, amountAfterFee, fee, block.timestamp);
-    }
-
-    /**
-     * @dev Withdraw tokens from the pool
-     * @param _amount Amount to withdraw
-     */
-    function withdraw(uint256 _amount) external nonReentrant {
-        require(poolActive, "CashbackPool: pool is inactive");
-        require(_amount > 0, "CashbackPool: invalid amount");
-        require(userBalance[msg.sender] >= _amount, "CashbackPool: insufficient balance");
-
-        // Calculate withdrawal fee
-        uint256 fee = (_amount * withdrawalFeePercentage) / 10000;
-        uint256 amountAfterFee = _amount - fee;
-
-        // Update balance
-        userBalance[msg.sender] -= _amount;
-        totalWithdrawn += amountAfterFee;
-
-        // Record withdrawal
-        userWithdrawals[msg.sender].push(
-            WithdrawalRecord({
-                user: msg.sender,
-                amount: amountAfterFee,
-                fee: fee,
-                timestamp: block.timestamp
+        // Track deposit
+        userDeposits[msg.sender] += _amount;
+        deposits.push(
+            Deposit({
+                depositor: msg.sender,
+                amount: _amount,
+                timestamp: block.timestamp,
+                reason: _reason
             })
         );
 
-        // Transfer tokens to user
+        emit FundsDeposited(msg.sender, _amount, _reason, block.timestamp);
+    }
+
+    /**
+     * @dev Distribute funds from pool
+     * Called by operator/manager when sending cashback
+     */
+    function distributeFunds(
+        address _recipient,
+        uint256 _amount,
+        string memory _reason
+    ) external onlyOperator nonReentrant whenNotPaused returns (bool) {
+        require(_recipient != address(0), "Invalid recipient");
+        require(_amount > 0, "Amount must be > 0");
+        require(pool.availableBalance >= _amount, "Insufficient pool balance");
+
+        // Transfer tokens to recipient
         require(
-            poolToken.transfer(msg.sender, amountAfterFee),
-            "CashbackPool: transfer failed"
+            cashbackToken.transfer(_recipient, _amount),
+            "Transfer failed"
         );
 
-        // Transfer fee to collector
-        if (fee > 0) {
-            require(
-                poolToken.transfer(feeCollector, fee),
-                "CashbackPool: fee transfer failed"
-            );
+        // Update pool state
+        pool.availableBalance -= _amount;
+        pool.totalDistributed += _amount;
+
+        // Track withdrawal
+        userWithdrawals[_recipient] += _amount;
+        withdrawals.push(
+            Withdrawal({
+                recipient: _recipient,
+                amount: _amount,
+                timestamp: block.timestamp,
+                reason: _reason
+            })
+        );
+
+        // Check liquidity warning
+        uint256 minimumRequired = (pool.totalDeposited * 10) / 100; // 10% minimum
+        if (pool.availableBalance < minimumRequired) {
+            emit LiquidityWarning(pool.availableBalance, minimumRequired);
         }
 
-        emit TokensWithdrawn(msg.sender, amountAfterFee, fee, block.timestamp);
+        emit FundsWithdrawn(_recipient, _amount, _reason, block.timestamp);
+        return true;
     }
 
     /**
-     * @dev Set deposit fee percentage
-     * @param _feePercentage New fee percentage (basis points)
+     * @dev Batch distribute funds
      */
-    function setDepositFee(uint256 _feePercentage) external onlyOwner {
-        require(_feePercentage <= 10000, "CashbackPool: invalid fee percentage");
-        depositFeePercentage = _feePercentage;
-        emit DepositFeeUpdated(_feePercentage);
+    function batchDistribute(
+        address[] calldata _recipients,
+        uint256[] calldata _amounts,
+        string memory _reason
+    ) external onlyOperator nonReentrant whenNotPaused {
+        require(
+            _recipients.length == _amounts.length,
+            "Arrays length mismatch"
+        );
+        require(_recipients.length > 0, "Empty arrays");
+        require(_recipients.length <= 100, "Too many recipients");
+
+        // Calculate total
+        uint256 totalAmount = 0;
+        for (uint256 i = 0; i < _amounts.length; i++) {
+            totalAmount += _amounts[i];
+        }
+
+        require(pool.availableBalance >= totalAmount, "Insufficient balance");
+
+        // Distribute
+        for (uint256 i = 0; i < _recipients.length; i++) {
+            require(_recipients[i] != address(0), "Invalid recipient");
+            require(_amounts[i] > 0, "Zero amount");
+
+            require(
+                cashbackToken.transfer(_recipients[i], _amounts[i]),
+                "Transfer failed"
+            );
+
+            pool.availableBalance -= _amounts[i];
+            pool.totalDistributed += _amounts[i];
+            userWithdrawals[_recipients[i]] += _amounts[i];
+
+            withdrawals.push(
+                Withdrawal({
+                    recipient: _recipients[i],
+                    amount: _amounts[i],
+                    timestamp: block.timestamp,
+                    reason: _reason
+                })
+            );
+
+            emit FundsWithdrawn(_recipients[i], _amounts[i], _reason, block.timestamp);
+        }
+
+        // Check liquidity
+        uint256 minimumRequired = (pool.totalDeposited * 10) / 100;
+        if (pool.availableBalance < minimumRequired) {
+            emit LiquidityWarning(pool.availableBalance, minimumRequired);
+        }
     }
 
     /**
-     * @dev Set withdrawal fee percentage
-     * @param _feePercentage New fee percentage (basis points)
+     * @dev Get pool info
      */
-    function setWithdrawalFee(uint256 _feePercentage) external onlyOwner {
-        require(_feePercentage <= 10000, "CashbackPool: invalid fee percentage");
-        withdrawalFeePercentage = _feePercentage;
-        emit WithdrawalFeeUpdated(_feePercentage);
-    }
-
-    /**
-     * @dev Update fee collector address
-     * @param _newCollector New fee collector address
-     */
-    function setFeeCollector(address _newCollector) external onlyOwner {
-        require(_newCollector != address(0), "CashbackPool: invalid address");
-        feeCollector = _newCollector;
-        emit FeeCollectorUpdated(_newCollector);
-    }
-
-    /**
-     * @dev Update cashback token address
-     * @param _newTokenAddress New cashback token address
-     */
-    function setCashbackTokenAddress(address _newTokenAddress) external onlyOwner {
-        require(_newTokenAddress != address(0), "CashbackPool: invalid address");
-        cashbackTokenAddress = _newTokenAddress;
-        emit CashbackTokenUpdated(_newTokenAddress);
-    }
-
-    /**
-     * @dev Toggle pool active status
-     * @param _active New status
-     */
-    function setPoolActive(bool _active) external onlyOwner {
-        poolActive = _active;
-        emit PoolStatusUpdated(_active);
-    }
-
-    /**
-     * @dev Get user deposit history
-     * @param _user User address
-     */
-    function getUserDeposits(address _user)
+    function getPoolInfo()
         external
         view
-        returns (DepositRecord[] memory)
+        returns (
+            uint256 _totalDeposited,
+            uint256 _totalDistributed,
+            uint256 _availableBalance,
+            bool _active
+        )
     {
+        return (
+            pool.totalDeposited,
+            pool.totalDistributed,
+            pool.availableBalance,
+            pool.active
+        );
+    }
+
+    /**
+     * @dev Get user deposit total
+     */
+    function getUserDepositTotal(address _user) external view returns (uint256) {
         return userDeposits[_user];
     }
 
     /**
-     * @dev Get user withdrawal history
-     * @param _user User address
+     * @dev Get user withdrawal total
      */
-    function getUserWithdrawals(address _user)
+    function getUserWithdrawalTotal(address _user)
         external
         view
-        returns (WithdrawalRecord[] memory)
+        returns (uint256)
     {
         return userWithdrawals[_user];
     }
 
     /**
-     * @dev Get pool balance
+     * @dev Get deposit count
      */
-    function getPoolBalance() external view returns (uint256) {
-        return poolToken.balanceOf(address(this));
+    function getDepositCount() external view returns (uint256) {
+        return deposits.length;
     }
 
     /**
-     * @dev Get user balance
-     * @param _user User address
+     * @dev Get withdrawal count
      */
-    function getUserBalance(address _user) external view returns (uint256) {
-        return userBalance[_user];
+    function getWithdrawalCount() external view returns (uint256) {
+        return withdrawals.length;
     }
 
     /**
-     * @dev Emergency withdraw
-     * @param _amount Amount to withdraw
+     * @dev Get deposit by index
+     */
+    function getDeposit(uint256 _index)
+        external
+        view
+        returns (Deposit memory)
+    {
+        require(_index < deposits.length, "Index out of bounds");
+        return deposits[_index];
+    }
+
+    /**
+     * @dev Get withdrawal by index
+     */
+    function getWithdrawal(uint256 _index)
+        external
+        view
+        returns (Withdrawal memory)
+    {
+        require(_index < withdrawals.length, "Index out of bounds");
+        return withdrawals[_index];
+    }
+
+    /**
+     * @dev Get recent deposits
+     */
+    function getRecentDeposits(uint256 _limit)
+        external
+        view
+        returns (Deposit[] memory)
+    {
+        uint256 count = _limit < deposits.length ? _limit : deposits.length;
+        Deposit[] memory recent = new Deposit[](count);
+
+        for (uint256 i = 0; i < count; i++) {
+            recent[i] = deposits[deposits.length - 1 - i];
+        }
+
+        return recent;
+    }
+
+    /**
+     * @dev Check liquidity status
+     */
+    function checkLiquidity() external view returns (bool isHealthy) {
+        uint256 minimumRequired = (pool.totalDeposited * 10) / 100; // 10% minimum
+        return pool.availableBalance >= minimumRequired;
+    }
+
+    /**
+     * @dev Get liquidity percentage
+     */
+    function getLiquidityPercentage() external view returns (uint256) {
+        if (pool.totalDeposited == 0) return 0;
+        return (pool.availableBalance * 100) / pool.totalDeposited;
+    }
+
+    /**
+     * @dev Set operator address
+     */
+    function setOperator(address _operator) external onlyOwner {
+        require(_operator != address(0), "Invalid operator");
+        operatorAddress = _operator;
+        emit OperatorChanged(_operator);
+    }
+
+    /**
+     * @dev Pause contract
+     */
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    /**
+     * @dev Unpause contract
+     */
+    function unpause() external onlyOwner {
+        _unpause();
+    }
+
+    /**
+     * @dev Emergency withdraw (only owner, for emergency)
      */
     function emergencyWithdraw(uint256 _amount) external onlyOwner nonReentrant {
-        require(_amount > 0, "CashbackPool: invalid amount");
+        require(_amount > 0, "Amount must be > 0");
         require(
-            poolToken.balanceOf(address(this)) >= _amount,
-            "CashbackPool: insufficient balance"
+            cashbackToken.balanceOf(address(this)) >= _amount,
+            "Insufficient balance"
         );
-        require(poolToken.transfer(owner(), _amount), "CashbackPool: transfer failed");
+
+        require(
+            cashbackToken.transfer(owner(), _amount),
+            "Transfer failed"
+        );
+    }
+
+    /**
+     * @dev Get contract balance
+     */
+    function getBalance() external view returns (uint256) {
+        return cashbackToken.balanceOf(address(this));
     }
 }
+

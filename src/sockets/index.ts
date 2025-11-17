@@ -6,6 +6,7 @@ import { ConversationRepository } from '../repositories/implements/conversation.
 import { MessageRepository } from '../repositories/implements/message.repository';
 import { prisma } from '../config/prisma';
 import { SOCKET_CONNECTION } from '../constants/socket-events';
+import { chatService } from '../config/container';
 
 /**
  * Khởi tạo Socket.IO handlers và middleware
@@ -19,9 +20,7 @@ export function initializeSocketHandlers(io: Server): void {
   const conversationRepo = new ConversationRepository(prisma);
   const messageRepo = new MessageRepository(prisma);
 
-  // Initialize services
-  const chatService = new ChatService(conversationRepo, messageRepo);
-
+  
   // Initialize handlers
   const chatHandler = new ChatHandler(io, chatService);
 
