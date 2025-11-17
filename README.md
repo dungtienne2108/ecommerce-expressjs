@@ -2,6 +2,12 @@
 
 Hệ thống backend cho ứng dụng thương mại điện tử được xây dựng với ExpressJS, TypeScript, PostgreSQL và tích hợp blockchain để quản lý cashback.
 
+## Thành viên nhóm
+
+- **Lê Dũng Tiến** - **22810310329** - **Trưởng nhóm**
+- **Nguyễn Trọng Quang** - **22810310333** - **Thành viên**
+- **Nguyễn Minh Đức** - **22810310339** - **Thành viên**
+
 ## Công nghệ sử dụng
 
 - **Framework**: ExpressJS
