@@ -11,11 +11,20 @@ import {
 import { PaginatedResponse } from '../types/common';
 import redis from '../config/redis';
 import { CacheUtil } from '../utils/cache.util';
+import {
+  Web3CashbackService,
+  type Web3CashbackResult,
+  type CashbackProcessingResult,
+} from './web3Cashback.service';
 
 export class PaymentService {
+  private web3CashbackService: Web3CashbackService;
+
   constructor(
     private uow: IUnitOfWork,
-  ) {}
+  ) {
+    this.web3CashbackService = new Web3CashbackService(uow);
+  }
 
   /**
    * Tạo payment cho đơn hàng
@@ -227,8 +236,49 @@ export class PaymentService {
           paidAt: new Date(),
         });
 
-        // TODO: Tạo cashback nếu đủ điều kiện
-        // Sẽ được xử lý bởi CashbackService
+        // Tạo cashback nếu đủ điều kiện
+        try {
+          const order = await uow.orders.findById(payment.orderId, { user: true });
+          if (order?.userId) {
+            const user = await uow.users.findById(order.userId);
+            if (user?.walletAddress) {
+              const existingCashback = await uow.cashbacks.findByPaymentId(payment.id);
+              if (!existingCashback) {
+                const cashbackPercentage = 5; // 5%
+                const cashbackAmount = (Number(payment.amount) * cashbackPercentage) / 100;
+                
+                const eligibleAt = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+                const expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+
+                await uow.cashbacks.create({
+                  payment: { connect: { id: payment.id } },
+                  user: { connect: { id: order.userId } },
+                  order: { connect: { id: payment.orderId } },
+                  amount: cashbackAmount,
+                  percentage: cashbackPercentage,
+                  currency: payment.currency,
+                  walletAddress: user.walletAddress,
+                  blockchainNetwork: user.preferredNetwork || 'BSC',
+                  status: 'PENDING',
+                  eligibleAt,
+                  expiresAt,
+                  updatedAt: new Date(),
+                  metadata: {
+                    orderNumber: order.orderNumber,
+                    createdBy: 'payment_update',
+                  },
+                });
+
+                console.log(
+                  `✅ Tạo cashback từ payment: ${payment.id} | Amount: ${cashbackAmount}`
+                );
+              }
+            }
+          }
+        } catch (error) {
+          console.error('❌ Lỗi tạo cashback từ payment:', error);
+          // Không throw error để không ảnh hưởng đến quá trình cập nhật payment
+        }
       }
 
       const result = await uow.payments.findById(paymentId, {
@@ -240,7 +290,7 @@ export class PaymentService {
       }
 
       // Invalidate cache
-      await this.invalidatePaymentCache(paymentId, payment.orderId);
+      // await this.invalidatePaymentCache(paymentId, payment.orderId);
 
       return this.mapToPaymentResponse(result);
     });
@@ -434,6 +484,101 @@ export class PaymentService {
       createdAt: payment.createdAt,
       updatedAt: payment.updatedAt,
     };
+  }
+
+  /**
+   * Xử lý cashback cho payment thành công (gọi qua cron job)
+   * @param paymentId
+   * @returns
+   */
+  async processCashbackForPayment(paymentId: string): Promise<any> {
+    try {
+      const payment = await this.uow.payments.findById(paymentId);
+      if (!payment) {
+        throw new NotFoundError('Thanh toán không tồn tại');
+      }
+
+      if (payment.status !== PaymentStatus.PAID) {
+        throw new ValidationError('Chỉ xử lý cashback cho thanh toán đã thành công');
+      }
+
+      // Lấy cashback liên quan
+      const cashback = await this.uow.cashbacks.findByPaymentId(paymentId);
+      if (!cashback) {
+        console.log(`⚠️  Không tìm thấy cashback cho payment: ${paymentId}`);
+        return {
+          success: false,
+          message: 'Không tìm thấy cashback',
+        };
+      }
+
+      // Gửi lên blockchain
+      return await this.web3CashbackService.processCashbackToWeb3(cashback.id);
+    } catch (error: any) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('❌ Lỗi xử lý cashback từ payment:', errorMessage);
+      return {
+        success: false,
+        message: errorMessage,
+      };
+    }
+  }
+
+  /**
+   * Xử lý hàng loạt cashback từ payment pending
+   * @returns
+   */
+  async processPendingCashbacks(): Promise<any> {
+    try {
+      console.log('🔄 Bắt đầu xử lý pending cashbacks từ payments...');
+      await this.web3CashbackService.processPendingCashbacksToWeb3(50);
+      console.log('🔄 Xử lý pending cashbacks từ payments thành công');
+    } catch (error) {
+      console.error('❌ Lỗi xử lý pending cashbacks:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Retry cashback đã failed
+   * @returns
+   */
+  async retryFailedCashbacks(): Promise<any> {
+    try {
+      console.log('🔄 Bắt đầu retry failed cashbacks...');
+      return await this.web3CashbackService.retryFailedCashbacksToWeb3(3);
+    } catch (error) {
+      console.error('❌ Lỗi retry failed cashbacks:', error);
+      return {
+        totalProcessed: 0,
+        successful: 0,
+        failed: 0,
+        results: [],
+      };
+    }
+  }
+
+  /**
+   * Xử lý cashback đã hết hạn
+   * @returns
+   */
+  async handleExpiredCashbacks() {
+    try {
+      console.log('🔄 Bắt đầu xử lý expired cashbacks...');
+      const count = await this.web3CashbackService.handleExpiredCashbacks();
+      return {
+        success: true,
+        message: `Đã xử lý ${count} cashback hết hạn`,
+        count,
+      };
+    } catch (error) {
+      console.error('❌ Lỗi xử lý expired cashbacks:', error);
+      return {
+        success: false,
+        message: 'Lỗi xử lý cashback hết hạn',
+        count: 0,
+      };
+    }
   }
 
   //#endregion

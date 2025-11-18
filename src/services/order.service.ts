@@ -21,9 +21,14 @@ import { PaginatedResponse } from '../types/common';
 import redis from '../config/redis';
 import { CacheUtil } from '../utils/cache.util';
 import { filter } from 'compression';
+import { Web3CashbackService } from './web3Cashback.service';
 
 export class OrderService {
-  constructor(private uow: IUnitOfWork) {}
+  private web3CashbackService: Web3CashbackService;
+
+  constructor(private uow: IUnitOfWork) {
+    this.web3CashbackService = new Web3CashbackService(uow);
+  }
 
   // /**
   //  * Tạo đơn hàng từ giỏ hàng của người dùng
@@ -822,43 +827,58 @@ export class OrderService {
     payment: any,
     userId: string
   ) {
-    const user = await uow.users.findById(userId);
-    if (!user || !user.walletAddress) {
-      console.log('User không có ví, không tạo cashback');
-      return;
+    try {
+      const user = await uow.users.findById(userId);
+      if (!user || !user.walletAddress) {
+        console.log('❌ User không có ví, không tạo cashback');
+        return;
+      }
+
+      const existingCashback = await uow.cashbacks.findByPaymentId(payment.id);
+      if (existingCashback) {
+        console.log('⚠️  Cashback đã tồn tại cho payment này');
+        return;
+      }
+
+      const cashbackPercentage = 5; // 5%
+      const cashbackAmount = (Number(payment.amount) * cashbackPercentage) / 100;
+
+      // Tạo cashback với trạng thái PENDING
+      const eligibleAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 ngày sau
+      const expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000); // 90 ngày sau
+
+      const cashback = await uow.cashbacks.create({
+        payment: { connect: { id: payment.id } },
+        user: { connect: { id: userId } },
+        order: { connect: { id: payment.orderId } },
+        amount: cashbackAmount,
+        percentage: cashbackPercentage,
+        currency: payment.currency,
+        walletAddress: user.walletAddress,
+        blockchainNetwork: user.preferredNetwork || 'BSC',
+        status: 'PENDING',
+        eligibleAt,
+        expiresAt,
+        updatedAt: new Date(),
+
+        metadata: {
+          orderNumber: payment.order?.orderNumber,
+          createdBy: 'system',
+        },
+      });
+
+      console.log(
+        `✅ Tạo cashback thành công: ${cashback.id} | Amount: ${cashbackAmount}`
+      );
+
+      // Log thông tin để xử lý bằng cron job sau
+      console.log(
+        `📅 Cashback sẽ được xử lý vào blockchain sau 7 ngày (${eligibleAt.toISOString()})`
+      );
+    } catch (error) {
+      console.error('❌ Lỗi tạo cashback:', error);
+      // Không throw error để không ảnh hưởng đến quá trình tạo order
     }
-
-    const existingCashback = await uow.cashbacks.findByPaymentId(payment.id);
-    if (existingCashback) {
-      return;
-    }
-
-    const cashbackPercentage = 5; // 5%
-    const cashbackAmount = (Number(payment.amount) * cashbackPercentage) / 100;
-
-    // Tạo cashback
-    const eligibleAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 ngày sau
-    const expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000); // 90 ngày sau
-
-    await uow.cashbacks.create({
-      payment: { connect: { id: payment.id } },
-      user: { connect: { id: userId } },
-      order: { connect: { id: payment.orderId } },
-      amount: cashbackAmount,
-      percentage: cashbackPercentage,
-      currency: payment.currency,
-      walletAddress: user.walletAddress,
-      blockchainNetwork: user.preferredNetwork || 'BSC',
-      status: 'PENDING',
-      eligibleAt,
-      expiresAt,
-      updatedAt: new Date(),
-
-      metadata: {
-        orderNumber: payment.order?.orderNumber,
-        createdBy: 'system',
-      },
-    });
   }
 
   //#endregion

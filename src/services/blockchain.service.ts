@@ -11,12 +11,7 @@ export class BlockchainService {
 
   // Network configurations
   private readonly networks: Record<string, BlockchainConfig> = {
-    // BSC: {
-    //   rpcUrl: process.env.BSC_RPC_URL || 'https://bsc-dataseed.binance.org/',
-    //   privateKey: process.env.BSC_PRIVATE_KEY || '',
-    //   tokenAddress: process.env.BSC_TOKEN_ADDRESS, // Nếu gửi token
-    //   gasLimit: 100000,
-    // },
+    // ===== BSC Networks =====
     BSC_TESTNET: {
       rpcUrl:
         process.env.BSC_TESTNET_RPC_URL ||
@@ -25,16 +20,38 @@ export class BlockchainService {
       tokenAddress: process.env.BSC_TESTNET_TOKEN_ADDRESS || '', // Nếu gửi token
       gasLimit: 100000,
     },
-    // ETH: {
-    //   rpcUrl: process.env.ETH_RPC_URL || 'https://mainnet.infura.io/v3/YOUR_INFURA_KEY',
-    //   privateKey: process.env.ETH_PRIVATE_KEY || '',
-    //   tokenAddress: process.env.ETH_TOKEN_ADDRESS,
+    // ===== Ethereum Sepolia Testnet =====
+    ETH_SEPOLIA: {
+      rpcUrl:
+        process.env.ETH_SEPOLIA_RPC_URL ||
+        'https://sepolia.infura.io/v3/YOUR_INFURA_KEY',
+      privateKey: process.env.ETH_SEPOLIA_PRIVATE_KEY || '',
+      tokenAddress: process.env.ETH_SEPOLIA_TOKEN_ADDRESS || '', // Nếu gửi ERC20 token
+      gasLimit: 100000,
+    },
+    // ===== Commented Networks (For Future Use) =====
+    // BSC_MAINNET: {
+    //   rpcUrl: process.env.BSC_MAINNET_RPC_URL || 'https://bsc-dataseed.binance.org/',
+    //   privateKey: process.env.BSC_MAINNET_PRIVATE_KEY || '',
+    //   tokenAddress: process.env.BSC_MAINNET_TOKEN_ADDRESS,
     //   gasLimit: 100000,
     // },
-    // POLYGON: {
-    //   rpcUrl: process.env.POLYGON_RPC_URL || 'https://polygon-rpc.com',
-    //   privateKey: process.env.POLYGON_PRIVATE_KEY || '',
-    //   tokenAddress: process.env.POLYGON_TOKEN_ADDRESS,
+    // ETH_MAINNET: {
+    //   rpcUrl: process.env.ETH_MAINNET_RPC_URL || 'https://mainnet.infura.io/v3/YOUR_INFURA_KEY',
+    //   privateKey: process.env.ETH_MAINNET_PRIVATE_KEY || '',
+    //   tokenAddress: process.env.ETH_MAINNET_TOKEN_ADDRESS,
+    //   gasLimit: 100000,
+    // },
+    // POLYGON_MUMBAI: {
+    //   rpcUrl: process.env.POLYGON_MUMBAI_RPC_URL || 'https://rpc-mumbai.maticvigil.com',
+    //   privateKey: process.env.POLYGON_MUMBAI_PRIVATE_KEY || '',
+    //   tokenAddress: process.env.POLYGON_MUMBAI_TOKEN_ADDRESS,
+    //   gasLimit: 100000,
+    // },
+    // POLYGON_MAINNET: {
+    //   rpcUrl: process.env.POLYGON_MAINNET_RPC_URL || 'https://polygon-rpc.com',
+    //   privateKey: process.env.POLYGON_MAINNET_PRIVATE_KEY || '',
+    //   tokenAddress: process.env.POLYGON_MAINNET_TOKEN_ADDRESS,
     //   gasLimit: 100000,
     // },
   };
@@ -469,10 +486,12 @@ export class BlockchainService {
    */
   private getNativeTokenSymbol(network: string): string {
     const symbols: Record<string, string> = {
-      BSC: 'BNB',
       BSC_TESTNET: 'tBNB',
-      ETH: 'ETH',
-      POLYGON: 'MATIC',
+      BSC_MAINNET: 'BNB',
+      ETH_SEPOLIA: 'SepoliaETH',
+      ETH_MAINNET: 'ETH',
+      POLYGON_MUMBAI: 'tMATIC',
+      POLYGON_MAINNET: 'MATIC',
     };
     return symbols[network] || 'TOKEN';
   }
