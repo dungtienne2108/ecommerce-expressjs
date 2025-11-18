@@ -581,6 +581,25 @@ export class PaymentService {
     }
   }
 
+  /**
+   * Manual claim cashback cho user
+   * @param cashbackId
+   * @param userId - User requesting (for permission check)
+   * @returns
+   */
+  async claimCashbackForUser(cashbackId: string, userId: string): Promise<any> {
+    try {
+      console.log(`🔄 Bắt đầu claim cashback ${cashbackId} cho user ${userId}...`);
+      return await this.web3CashbackService.claimCashbackForUser(cashbackId, userId);
+    } catch (error) {
+      console.error('❌ Lỗi claim cashback:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Lỗi claim cashback',
+      };
+    }
+  }
+
   //#endregion
 
   // ==================== PRIVATE CACHE METHODS ====================

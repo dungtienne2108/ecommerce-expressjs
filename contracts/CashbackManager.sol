@@ -95,12 +95,26 @@ contract CashbackManager is Ownable, ReentrancyGuard, Pausable {
         uint256 amount = userCashbackBalance[msg.sender];
         require(amount > 0, "No cashback to claim");
         require(cashbackToken.balanceOf(address(this)) >= amount, "Insufficient contract balance");
-        
+
         userCashbackBalance[msg.sender] = 0;
-        
+
         require(cashbackToken.transfer(msg.sender, amount), "Transfer failed");
-        
+
         emit CashbackClaimed(msg.sender, amount);
+    }
+
+    // Claim cashback for a user (only owner can call - for automatic claim by backend)
+    function claimCashbackFor(address _user) external onlyOwner nonReentrant {
+        require(_user != address(0), "Invalid user address");
+        uint256 amount = userCashbackBalance[_user];
+        require(amount > 0, "No cashback to claim");
+        require(cashbackToken.balanceOf(address(this)) >= amount, "Insufficient contract balance");
+
+        userCashbackBalance[_user] = 0;
+
+        require(cashbackToken.transfer(_user, amount), "Transfer failed");
+
+        emit CashbackClaimed(_user, amount);
     }
     
     // Get user's pending cashback

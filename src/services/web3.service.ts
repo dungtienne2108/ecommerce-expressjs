@@ -120,6 +120,13 @@ const CASHBACK_MANAGER_ABI = [
     inputs: [{ name: '_percentage', type: 'uint256' }],
     outputs: [],
     stateMutability: 'nonpayable'
+  },
+  {
+    type: 'function',
+    name: 'claimCashbackFor',
+    inputs: [{ name: '_user', type: 'address' }],
+    outputs: [],
+    stateMutability: 'nonpayable'
   }
 ];
 
@@ -368,6 +375,51 @@ class Web3Service {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error('Error validating transaction:', errorMessage);
       throw error;
+    }
+  }
+
+  /**
+   * Claim cashback for a user (auto claim by backend)
+   * @param userAddress - User wallet address to receive tokens
+   * @returns Transaction result
+   */
+  async claimCashbackForUser(userAddress: string): Promise<PaymentResult> {
+    try {
+      console.log(`\n💰 Auto claiming cashback for user: ${userAddress}`);
+
+      // Check pending cashback first
+      const pendingCashback = await this.getCashbackForUser(userAddress);
+      if (pendingCashback === 0n) {
+        return {
+          success: false,
+          message: 'No cashback to claim for this user',
+        };
+      }
+
+      console.log(`Pending cashback: ${ethers.formatEther(pendingCashback)} tokens`);
+
+      // Call claimCashbackFor from contract
+      const managerWithSigner = this.managerContract.connect(this.backendWallet) as any;
+      const tx = await managerWithSigner.claimCashbackFor(userAddress);
+      console.log(`✅ Claim transaction sent: ${tx.hash}`);
+
+      const receipt = await tx.wait();
+      console.log(`✅ Claim confirmed in block: ${receipt?.blockNumber}`);
+
+      return {
+        success: true,
+        txHash: tx.hash,
+        blockNumber: receipt?.blockNumber,
+        cashbackAmount: ethers.formatEther(pendingCashback),
+        message: `Successfully claimed ${ethers.formatEther(pendingCashback)} CASH tokens for user`,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('❌ Error claiming cashback:', errorMessage);
+      return {
+        success: false,
+        error: errorMessage,
+      };
     }
   }
 }

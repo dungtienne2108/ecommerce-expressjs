@@ -362,6 +362,33 @@ export class PaymentController {
       res.json(response);
     }
   );
+
+  /**
+   * @desc Manual claim cashback cho user
+   * @route POST /api/payments/cashback/claim/:cashbackId
+   */
+  claimCashbackForUser = asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
+      const { cashbackId } = req.params;
+      if (!cashbackId) {
+        throw new ValidationError('Cashback ID là bắt buộc');
+      }
+
+      const userId = req.user?.id;
+      if (!userId) {
+        throw new UnauthorizedError('User chưa đăng nhập');
+      }
+
+      const result = await paymentService.claimCashbackForUser(cashbackId, userId);
+
+      const response: ApiResponse = {
+        success: result.success,
+        data: result,
+        message: result.message || 'Claim cashback thành công',
+      };
+      res.json(response);
+    }
+  );
 }
 
 export const paymentController = new PaymentController();

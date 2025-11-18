@@ -200,4 +200,15 @@ router.post(
   paymentController.handleExpiredCashbacks
 );
 
+/**
+ * @route POST /api/payments/cashback/claim/:cashbackId
+ * @desc Manual claim cashback cho user (admin hoặc user tự claim)
+ * @access Private - Admin or User (owner)
+ */
+router.post(
+  '/cashback/claim/:cashbackId',
+  combineMiddleware(authenticateToken, requireStatus([UserStatus.ACTIVE])),
+  paymentController.claimCashbackForUser
+);
+
 export default router;

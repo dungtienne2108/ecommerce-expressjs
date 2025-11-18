@@ -116,6 +116,30 @@ export class Web3CashbackService {
           updateData
         );
         console.log('🔄 Cập nhật status COMPLETED với thông tin transaction thành công');
+
+        // Auto claim cashback for user
+        console.log('💰 Bắt đầu auto claim cashback cho user...');
+        try {
+          const claimResult = await this.web3Service.claimCashbackForUser(
+            cashback.walletAddress
+          );
+
+          if (claimResult.success) {
+            console.log(`✅ Auto claim thành công: ${claimResult.txHash}`);
+            // TODO: Update claimTxHash to database if needed
+            // await uow.cashbacks.update(cashbackId, {
+            //   claimTxHash: claimResult.txHash,
+            //   claimedAt: new Date(),
+            // });
+          } else {
+            console.log(`⚠️ Auto claim thất bại: ${claimResult.error || claimResult.message}`);
+            // Không throw error, cashback vẫn COMPLETED, user có thể claim manual sau
+          }
+        } catch (claimError: any) {
+          console.error('⚠️ Lỗi auto claim:', claimError.message);
+          // Không throw error, cashback vẫn COMPLETED
+        }
+
         // Invalidate cache
         // await this.invalidateCashbackCache(cashbackId, cashback.userId);
         console.log('🔄 Invalidate cache thành công');
@@ -125,7 +149,7 @@ export class Web3CashbackService {
           txHash: txResult.txHash,
           blockNumber: txResult.blockNumber,
           amount: txResult.cashbackAmount,
-          message: txResult.message || 'Cashback đã được gửi thành công',
+          message: txResult.message || 'Cashback đã được gửi thành công và tự động claim',
         } as any as Web3CashbackResult;
       } catch (error: any) {
         // Cập nhật status FAILED với thông tin lỗi
@@ -506,6 +530,86 @@ export class Web3CashbackService {
       console.error('❌ Lỗi thống kê cashback:', error);
       throw error;
     }
+  }
+
+  /**
+   * Manual claim cashback cho user (có kiểm tra quyền)
+   * @param cashbackId
+   * @param userId - User yêu cầu claim (để check quyền)
+   * @returns
+   */
+  async claimCashbackForUser(
+    cashbackId: string,
+    userId: string
+  ): Promise<Web3CashbackResult> {
+    return this.uow.executeInTransaction(async (uow) => {
+      try {
+        // Lấy thông tin cashback
+        const cashback = await uow.cashbacks.findById(cashbackId, {
+          user: true,
+        });
+
+        if (!cashback) {
+          throw new NotFoundError('Cashback không tồn tại');
+        }
+
+        // Kiểm tra quyền: chỉ cho phép user sở hữu hoặc admin
+        const userRoles = await uow.userRoles.findByUserIdWithRoles(userId);
+        const isAdmin = userRoles.some((r) => r.role.type === 'SYSTEM_ADMIN');
+
+        if (cashback.userId !== userId && !isAdmin) {
+          throw new ValidationError('Bạn không có quyền claim cashback này');
+        }
+
+        // Kiểm tra trạng thái
+        if (cashback.status !== CashbackStatus.COMPLETED) {
+          throw new ValidationError(
+            `Cashback ở trạng thái ${cashback.status}, chỉ có thể claim khi COMPLETED`
+          );
+        }
+
+        if (!cashback.walletAddress) {
+          throw new ValidationError('Ví người dùng không tồn tại');
+        }
+
+        console.log(`💰 Claim cashback ${cashbackId} cho user: ${cashback.walletAddress}`);
+
+        // Gọi Web3Service để claim
+        const claimResult = await this.web3Service.claimCashbackForUser(
+          cashback.walletAddress
+        );
+
+        if (!claimResult.success) {
+          throw new Error(claimResult.error || 'Claim cashback thất bại');
+        }
+
+        // TODO: Update claimTxHash nếu cần
+        // await uow.cashbacks.update(cashbackId, {
+        //   claimTxHash: claimResult.txHash,
+        //   claimedAt: new Date(),
+        // });
+
+        console.log(`✅ Claim cashback thành công: ${claimResult.txHash}`);
+
+        return {
+          success: true,
+          cashbackId,
+          txHash: claimResult.txHash,
+          blockNumber: claimResult.blockNumber,
+          amount: claimResult.cashbackAmount,
+          message: `Claim thành công ${claimResult.cashbackAmount} CASH tokens`,
+        };
+      } catch (error: any) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error('❌ Lỗi claim cashback:', errorMessage);
+        return {
+          success: false,
+          cashbackId,
+          message: `Claim cashback thất bại: ${errorMessage}`,
+          error: errorMessage,
+        };
+      }
+    });
   }
 
   /**
