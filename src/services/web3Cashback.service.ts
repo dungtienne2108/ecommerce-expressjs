@@ -76,9 +76,13 @@ export class Web3CashbackService {
 
         console.log('🔄 Cập nhật status sang PROCESSING');
         // Cập nhật status sang PROCESSING
-        await uow.cashbacks.updateStatus(cashbackId, CashbackStatus.PROCESSING, {
-          processedAt: new Date(),
-        });
+        await uow.cashbacks.updateStatus(
+          cashbackId,
+          CashbackStatus.PROCESSING,
+          {
+            processedAt: new Date(),
+          }
+        );
         console.log('🔄 Cập nhật status sang PROCESSING thành công');
 
         console.log('🔄 Gửi transaction lên blockchain');
@@ -115,9 +119,38 @@ export class Web3CashbackService {
           CashbackStatus.COMPLETED,
           updateData
         );
-        console.log('🔄 Cập nhật status COMPLETED với thông tin transaction thành công');
+        console.log(
+          '🔄 Cập nhật status COMPLETED với thông tin transaction thành công'
+        );
         // Invalidate cache
         // await this.invalidateCashbackCache(cashbackId, cashback.userId);
+
+        // Auto claim cashback for user
+
+        console.log('💰 Bắt đầu auto claim cashback cho user...');
+
+        try {
+          const claimResult = await this.web3Service.claimCashbackForUser(
+            cashback.walletAddress
+          );
+
+          if (claimResult.success) {
+            console.log(`✅ Auto claim thành công: ${claimResult.txHash}`);
+
+            // Update claimTxHash to database
+          } else {
+            console.log(
+              `⚠️ Auto claim thất bại: ${claimResult.error || claimResult.message}`
+            );
+
+            // Không throw error, cashback vẫn COMPLETED, user có thể claim manual sau
+          }
+        } catch (claimError: any) {
+          console.error('⚠️ Lỗi auto claim:', claimError.message);
+
+          // Không throw error, cashback vẫn COMPLETED
+        }
+
         console.log('🔄 Invalidate cache thành công');
         return {
           success: true,
@@ -147,7 +180,8 @@ export class Web3CashbackService {
           console.error('Error invalidating cache:', cacheError);
         }
         console.log('🔄 Invalidate cache thành công');
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
         console.log('🔄 Return error');
         return {
           success: false,
@@ -173,9 +207,8 @@ export class Web3CashbackService {
 
     try {
       // Lấy danh sách cashback pending và đủ điều kiện
-      const pendingCashbacks = await this.uow.cashbacks.findPendingCashbacks(
-        limit
-      );
+      const pendingCashbacks =
+        await this.uow.cashbacks.findPendingCashbacks(limit);
 
       console.log(
         `🔄 Bắt đầu xử lý ${pendingCashbacks.length} cashback đang pending`
@@ -197,7 +230,8 @@ export class Web3CashbackService {
           }
         } catch (error: any) {
           failed++;
-          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
           results.push({
             success: false,
             cashbackId: cashback.id,
@@ -220,6 +254,86 @@ export class Web3CashbackService {
   }
 
   /**
+   * Manual claim cashback cho user (có kiểm tra quyền)
+   * @param cashbackId
+   * @param userId - User yêu cầu claim (để check quyền)
+   * @returns
+   */
+  async claimCashbackForUser(
+    cashbackId: string,
+    userId: string
+  ): Promise<Web3CashbackResult> {
+    return this.uow.executeInTransaction(async (uow) => {
+      try {
+        // Lấy thông tin cashback
+        const cashback = await uow.cashbacks.findById(cashbackId, {
+          user: true,
+        });
+
+        if (!cashback) {
+          throw new NotFoundError('Cashback không tồn tại');
+        }
+
+        // Kiểm tra quyền: chỉ cho phép user sở hữu hoặc admin
+        const userRoles = await uow.userRoles.findByUserIdWithRoles(userId);
+        const isAdmin = userRoles.some((r) => r.role.type === 'SYSTEM_ADMIN');
+
+        if (cashback.userId !== userId && !isAdmin) {
+          throw new ValidationError('Bạn không có quyền claim cashback này');
+        }
+
+        // Kiểm tra trạng thái
+        if (cashback.status !== CashbackStatus.COMPLETED) {
+          throw new ValidationError(
+            `Cashback ở trạng thái ${cashback.status}, chỉ có thể claim khi COMPLETED`
+          );
+        }
+
+        if (!cashback.walletAddress) {
+          throw new ValidationError('Ví người dùng không tồn tại');
+        }
+
+        console.log(`💰 Claim cashback ${cashbackId} cho user: ${cashback.walletAddress}`);
+
+        // Gọi Web3Service để claim
+        const claimResult = await this.web3Service.claimCashbackForUser(
+          cashback.walletAddress
+        );
+
+        if (!claimResult.success) {
+          throw new Error(claimResult.error || 'Claim cashback thất bại');
+        }
+
+        // TODO: Update claimTxHash nếu cần
+        // await uow.cashbacks.update(cashbackId, {
+        //   claimTxHash: claimResult.txHash,
+        //   claimedAt: new Date(),
+        // });
+
+        console.log(`✅ Claim cashback thành công: ${claimResult.txHash}`);
+
+        return {
+          success: true,
+          cashbackId,
+          txHash: claimResult.txHash || '',
+          blockNumber: claimResult.blockNumber || 0,
+          amount: claimResult.cashbackAmount || '',
+          message: `Claim thành công ${claimResult.cashbackAmount} CASH tokens`,
+        };
+      } catch (error: any) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error('❌ Lỗi claim cashback:', errorMessage);
+        return {
+          success: false,
+          cashbackId,
+          message: `Claim cashback thất bại: ${errorMessage}`,
+          error: errorMessage,
+        };
+      }
+    });
+  }
+
+  /**
    * Retry cashback failed và gửi lại lên blockchain
    * @param maxRetries
    * @returns
@@ -233,9 +347,8 @@ export class Web3CashbackService {
 
     try {
       // Lấy danh sách cashback FAILED chưa vượt quá max retries
-      const failedCashbacks = await this.uow.cashbacks.findFailedCashbacksForRetry(
-        maxRetries
-      );
+      const failedCashbacks =
+        await this.uow.cashbacks.findFailedCashbacksForRetry(maxRetries);
 
       console.log(
         `🔄 Bắt đầu retry ${failedCashbacks.length} cashback đã thất bại`
@@ -263,7 +376,8 @@ export class Web3CashbackService {
           }
         } catch (error: any) {
           failed++;
-          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
           results.push({
             success: false,
             cashbackId: cashback.id,
@@ -293,7 +407,9 @@ export class Web3CashbackService {
     try {
       const expiredCashbacks = await this.uow.cashbacks.findExpiredCashbacks();
 
-      console.log(`⚠️  Tìm thấy ${expiredCashbacks.length} cashback đã hết hạn`);
+      console.log(
+        `⚠️  Tìm thấy ${expiredCashbacks.length} cashback đã hết hạn`
+      );
 
       let cancelledCount = 0;
       for (const cashback of expiredCashbacks) {
@@ -313,10 +429,7 @@ export class Web3CashbackService {
           cancelledCount++;
           console.log(`✅ Hủy cashback đã hết hạn: ${cashback.id}`);
         } catch (error) {
-          console.error(
-            `❌ Lỗi hủy cashback ${cashback.id}:`,
-            error
-          );
+          console.error(`❌ Lỗi hủy cashback ${cashback.id}:`, error);
         }
       }
 
@@ -537,4 +650,3 @@ export class Web3CashbackService {
     }
   }
 }
-

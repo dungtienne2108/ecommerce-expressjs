@@ -132,6 +132,12 @@ router.get(
   paymentController.getPaymentStatistics
 );
 
+router.post(
+  '/cashback/claim/:cashbackId',
+  combineMiddleware(authenticateToken, requireStatus([UserStatus.ACTIVE])),
+  paymentController.claimCashbackForUser
+);
+
 /**
  * CRON JOB ROUTES (Admin only - thường được gọi bởi cron jobs)
  */

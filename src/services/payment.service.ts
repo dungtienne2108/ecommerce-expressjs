@@ -244,9 +244,9 @@ export class PaymentService {
             if (user?.walletAddress) {
               const existingCashback = await uow.cashbacks.findByPaymentId(payment.id);
               if (!existingCashback) {
-                const cashbackPercentage = 5; // 5%
-                const cashbackAmount = (Number(payment.amount) * cashbackPercentage) / 100;
-                
+                const cashbackPercentage = 1; // 1%
+                // const cashbackAmount = (Number(payment.amount) * cashbackPercentage) / 100;
+                const cashbackAmount = Number(payment.amount);
                 const eligibleAt = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
                 const expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
 
@@ -554,6 +554,25 @@ export class PaymentService {
         successful: 0,
         failed: 0,
         results: [],
+      };
+    }
+  }
+
+  /**
+   * Manual claim cashback cho user
+   * @param cashbackId
+   * @param userId - User requesting (for permission check)
+   * @returns
+   */
+  async claimCashbackForUser(cashbackId: string, userId: string): Promise<any> {
+    try {
+      console.log(`🔄 Bắt đầu claim cashback ${cashbackId} cho user ${userId}...`);
+      return await this.web3CashbackService.claimCashbackForUser(cashbackId, userId);
+    } catch (error) {
+      console.error('❌ Lỗi claim cashback:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Lỗi claim cashback',
       };
     }
   }

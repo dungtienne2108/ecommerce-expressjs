@@ -186,6 +186,6 @@ export class UnitOfWork implements IUnitOfWork {
       const transactionalUow = new UnitOfWork(tx as PrismaClient);
       transactionalUow.isInTransaction = true;
       return await operation(transactionalUow);
-    });
+    }, {timeout: 50000});
   }
 }

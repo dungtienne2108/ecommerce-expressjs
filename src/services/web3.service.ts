@@ -32,28 +32,28 @@ const CASHBACK_TOKEN_ABI = [
     name: 'approve',
     inputs: [
       { name: 'spender', type: 'address' },
-      { name: 'amount', type: 'uint256' }
+      { name: 'amount', type: 'uint256' },
     ],
     outputs: [{ type: 'bool' }],
-    stateMutability: 'nonpayable'
+    stateMutability: 'nonpayable',
   },
   {
     type: 'function',
     name: 'balanceOf',
     inputs: [{ name: 'account', type: 'address' }],
     outputs: [{ type: 'uint256' }],
-    stateMutability: 'view'
+    stateMutability: 'view',
   },
   {
     type: 'function',
     name: 'transfer',
     inputs: [
       { name: 'to', type: 'address' },
-      { name: 'amount', type: 'uint256' }
+      { name: 'amount', type: 'uint256' },
     ],
     outputs: [{ type: 'bool' }],
-    stateMutability: 'nonpayable'
-  }
+    stateMutability: 'nonpayable',
+  },
 ];
 
 const CASHBACK_MANAGER_ABI = [
@@ -62,17 +62,17 @@ const CASHBACK_MANAGER_ABI = [
     name: 'registerMerchant',
     inputs: [
       { name: '_merchant', type: 'address' },
-      { name: '_isActive', type: 'bool' }
+      { name: '_isActive', type: 'bool' },
     ],
     outputs: [],
-    stateMutability: 'nonpayable'
+    stateMutability: 'nonpayable',
   },
   {
     type: 'function',
     name: 'getUserCashback',
     inputs: [{ name: 'user', type: 'address' }],
     outputs: [{ type: 'uint256' }],
-    stateMutability: 'view'
+    stateMutability: 'view',
   },
   {
     type: 'function',
@@ -82,16 +82,16 @@ const CASHBACK_MANAGER_ABI = [
       { name: 'isActive', type: 'bool' },
       { name: 'customCashback', type: 'uint256' },
       { name: 'totalTransactions', type: 'uint256' },
-      { name: 'totalCashbackGiven', type: 'uint256' }
+      { name: 'totalCashbackGiven', type: 'uint256' },
     ],
-    stateMutability: 'view'
+    stateMutability: 'view',
   },
   {
     type: 'function',
     name: 'claimCashback',
     inputs: [],
     outputs: [],
-    stateMutability: 'nonpayable'
+    stateMutability: 'nonpayable',
   },
   {
     type: 'function',
@@ -99,28 +99,35 @@ const CASHBACK_MANAGER_ABI = [
     inputs: [
       { name: '_user', type: 'address' },
       { name: '_merchant', type: 'address' },
-      { name: '_transactionAmount', type: 'uint256' }
+      { name: '_transactionAmount', type: 'uint256' },
     ],
     outputs: [{ name: 'cashbackAmount', type: 'uint256' }],
-    stateMutability: 'nonpayable'
+    stateMutability: 'nonpayable',
   },
   {
     type: 'function',
     name: 'setMerchantCashback',
     inputs: [
       { name: '_merchant', type: 'address' },
-      { name: '_percentage', type: 'uint256' }
+      { name: '_percentage', type: 'uint256' },
     ],
     outputs: [],
-    stateMutability: 'nonpayable'
+    stateMutability: 'nonpayable',
   },
   {
     type: 'function',
     name: 'setCashbackPercentage',
     inputs: [{ name: '_percentage', type: 'uint256' }],
     outputs: [],
-    stateMutability: 'nonpayable'
-  }
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'claimCashbackFor',
+    inputs: [{ name: '_user', type: 'address' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
 ];
 
 const MERCHANT_PAYMENT_ABI = [
@@ -129,7 +136,7 @@ const MERCHANT_PAYMENT_ABI = [
     name: 'processPayment',
     inputs: [{ name: 'amount', type: 'uint256' }],
     outputs: [{ type: 'bytes32' }],
-    stateMutability: 'nonpayable'
+    stateMutability: 'nonpayable',
   },
   {
     type: 'function',
@@ -140,9 +147,9 @@ const MERCHANT_PAYMENT_ABI = [
       { type: 'uint256' },
       { type: 'uint256' },
       { type: 'uint256' },
-      { type: 'bool' }
+      { type: 'bool' },
     ],
-    stateMutability: 'view'
+    stateMutability: 'view',
   },
   {
     type: 'function',
@@ -152,10 +159,10 @@ const MERCHANT_PAYMENT_ABI = [
       { name: 'isActive', type: 'bool' },
       { name: 'customCashback', type: 'uint256' },
       { name: 'totalTransactions', type: 'uint256' },
-      { name: 'totalCashbackGiven', type: 'uint256' }
+      { name: 'totalCashbackGiven', type: 'uint256' },
     ],
-    stateMutability: 'view'
-  }
+    stateMutability: 'view',
+  },
 ];
 
 class Web3Service {
@@ -171,18 +178,18 @@ class Web3Service {
   constructor() {
     // Connect to Sepolia testnet
     this.provider = new ethers.JsonRpcProvider(process.env.ETH_SEPOLIA_RPC_URL);
-    
+
     // Private key for backend
     this.backendWallet = new ethers.Wallet(
       process.env.ETH_SEPOLIA_PRIVATE_KEY || '',
       this.provider
     );
-    
+
     // Contract addresses
     this.tokenAddress = process.env.CASHBACK_TOKEN_ADDRESS || '';
     this.managerAddress = process.env.CASHBACK_MANAGER_ADDRESS || '';
     this.paymentAddress = process.env.MERCHANT_PAYMENT_ADDRESS || '';
-    
+
     // Initialize contracts
     this.tokenContract = new ethers.Contract(
       this.tokenAddress,
@@ -220,7 +227,9 @@ class Web3Service {
       console.log('🔄 Backend wallet:', this.backendWallet.address);
       console.log('🔄 User address:', userAddress);
       console.log('🔄 Amount in wei:', amountInWei);
-      const managerWithSigner = this.managerContract.connect(this.backendWallet) as any;
+      const managerWithSigner = this.managerContract.connect(
+        this.backendWallet
+      ) as any;
       console.log('🔄 Manager contract with signer:', managerWithSigner);
       const tx = await managerWithSigner.recordTransaction(
         userAddress,
@@ -229,7 +238,7 @@ class Web3Service {
       );
       console.log('🔄 Transaction recorded:', tx);
       console.log(`✅ Transaction recorded: ${tx.hash}`);
-      
+
       const receipt = await tx.wait();
       console.log(`✅ Confirmed in block: ${receipt?.blockNumber}`);
       console.log('🔄 Receipt:', receipt);
@@ -243,8 +252,54 @@ class Web3Service {
         message: `Payment processed! User earned ${ethers.formatEther(cashbackAmount)} CASH tokens`,
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       console.error('❌ Error processing payment:', errorMessage);
+      return {
+        success: false,
+        error: errorMessage,
+      };
+    }
+  }
+
+  /**
+   * Claim cashback for a user (auto claim by backend)
+   * @param userAddress - User wallet address to receive tokens
+   * @returns Transaction result
+   */
+  async claimCashbackForUser(userAddress: string): Promise<PaymentResult> {
+    try {
+      console.log(`\n💰 Auto claiming cashback for user: ${userAddress}`);
+
+      // Check pending cashback first
+      const pendingCashback = await this.getCashbackForUser(userAddress);
+      if (pendingCashback === 0n) {
+        return {
+          success: false,
+          message: 'No cashback to claim for this user',
+        };
+      }
+
+      console.log(`Pending cashback: ${ethers.formatEther(pendingCashback)} tokens`);
+
+      // Call claimCashbackFor from contract
+      const managerWithSigner = this.managerContract.connect(this.backendWallet) as any;
+      const tx = await managerWithSigner.claimCashbackFor(userAddress);
+      console.log(`✅ Claim transaction sent: ${tx.hash}`);
+
+      const receipt = await tx.wait();
+      console.log(`✅ Claim confirmed in block: ${receipt?.blockNumber}`);
+
+      return {
+        success: true,
+        txHash: tx.hash,
+        blockNumber: receipt?.blockNumber,
+        cashbackAmount: ethers.formatEther(pendingCashback),
+        message: `Successfully claimed ${ethers.formatEther(pendingCashback)} CASH tokens for user`,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('❌ Error claiming cashback:', errorMessage);
       return {
         success: false,
         error: errorMessage,
@@ -257,10 +312,15 @@ class Web3Service {
       if (!this.managerContract) {
         throw new Error('Manager contract not initialized');
       }
-      const cashback = await (this.managerContract as any).getUserCashback(userAddress);
+
+      console.log('🔄 Getting cashback for user:', userAddress);
+      const cashback = await (this.managerContract as any).getUserCashback(
+        userAddress
+      );
       return cashback;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       console.error('Error getting cashback:', errorMessage);
       throw error;
     }
@@ -279,7 +339,8 @@ class Web3Service {
       const balance = await (this.tokenContract as any).balanceOf(userAddress);
       return ethers.formatEther(balance);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       console.error('Error getting balance:', errorMessage);
       throw error;
     }
@@ -287,7 +348,9 @@ class Web3Service {
 
   async getMerchantInfo(): Promise<MerchantInfo> {
     try {
-      const managerWithSigner = this.managerContract.connect(this.backendWallet) as any;
+      const managerWithSigner = this.managerContract.connect(
+        this.backendWallet
+      ) as any;
       let info = await managerWithSigner.getMerchantInfo(this.paymentAddress);
       console.log('🔄 Merchant info raw:', info);
 
@@ -297,13 +360,20 @@ class Web3Service {
       const totalTransactions = info.totalTransactions || info[2];
       const totalCashbackGiven = info.totalCashbackGiven || info[3];
 
-      console.log('🔄 Merchant info parsed:', { isActive, customCashback, totalTransactions, totalCashbackGiven });
+      console.log('🔄 Merchant info parsed:', {
+        isActive,
+        customCashback,
+        totalTransactions,
+        totalCashbackGiven,
+      });
 
       // if merchant info is not found, register merchant
-      if (!isActive){
+      if (!isActive) {
         console.log('🔄 Registering merchant...');
         await managerWithSigner.registerMerchant(this.paymentAddress, true);
-        const newInfo = await managerWithSigner.getMerchantInfo(this.paymentAddress);
+        const newInfo = await managerWithSigner.getMerchantInfo(
+          this.paymentAddress
+        );
         console.log('🔄 New merchant info:', newInfo);
         info = newInfo;
       }
@@ -315,7 +385,8 @@ class Web3Service {
         totalCashbackGiven: ethers.formatEther(totalCashbackGiven || 0n),
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       console.error('Error getting merchant info:', errorMessage);
       throw error;
     }
@@ -335,7 +406,10 @@ class Web3Service {
       console.log(`Quantity: ${quantity}`);
       console.log(`Total: ${totalAmount} tokens`);
 
-      const result = await this.processPaymentWithCashback(userAddress, amountInWei);
+      const result = await this.processPaymentWithCashback(
+        userAddress,
+        amountInWei
+      );
 
       if (result.success) {
         const cashback = await this.getCashbackForUserFormatted(userAddress);
@@ -347,7 +421,8 @@ class Web3Service {
 
       return result;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       console.error('Error in checkout:', errorMessage);
       return {
         success: false,
@@ -365,7 +440,8 @@ class Web3Service {
         status: receipt?.status === 1 ? 'Success' : 'Failed',
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       console.error('Error validating transaction:', errorMessage);
       throw error;
     }
