@@ -1,6 +1,11 @@
 import { Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
 import {
+  createVNPayPaymentSchema,
+  vnpayReturnSchema,
+  vnpayIPNSchema,
+} from '../validators/vnpay.validators';
+import {
   createPaymentSchema,
   updatePaymentStatusSchema,
   getPaymentsQuerySchema,
@@ -8,7 +13,7 @@ import {
   cancelPaymentSchema,
 } from '../validators/payment.validators';
 import { UnauthorizedError, ValidationError } from '../errors/AppError';
-import { paymentService } from '../config/container';
+import { paymentService, vnpayService } from '../config/container';
 import { ApiResponse } from '../types/common';
 import { PaymentSearchFilters } from '../types/payment.types';
 import { PaymentStatus } from '@prisma/client';
@@ -343,7 +348,10 @@ export class PaymentController {
         throw new UnauthorizedError('User chưa đăng nhập');
       }
 
-      const result = await paymentService.claimCashbackForUser(cashbackId, userId);
+      const result = await paymentService.claimCashbackForUser(
+        cashbackId,
+        userId
+      );
 
       const response: ApiResponse = {
         success: result.success,
@@ -387,6 +395,114 @@ export class PaymentController {
         message: `Đã xử lý ${processedCount} thanh toán hết hạn`,
       };
       res.json(response);
+    }
+  );
+
+  // ==================== VNPAY METHODS ====================
+
+  /**
+   * @desc Tạo VNPay payment URL
+   * @route POST /api/payments/vnpay/create
+   */
+  createVNPayPaymentUrl = asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
+      const { error, value } = createVNPayPaymentSchema.validate(req.body);
+      if (error) {
+        throw new ValidationError(
+          error.details?.[0]?.message || 'Dữ liệu không hợp lệ'
+        );
+      }
+
+      const userId = req.user?.id;
+      if (!userId) {
+        throw new UnauthorizedError('User chưa đăng nhập');
+      }
+
+      // Get client IP address
+      const ipAddr =
+        req.headers['x-forwarded-for'] ||
+        req.socket.remoteAddress ||
+        '127.0.0.1';
+
+      const result = await vnpayService.createPaymentUrl({
+        orderId: value.orderId,
+        amount: value.amount,
+        orderInfo: value.orderInfo,
+        orderType: value.orderType,
+        locale: value.locale,
+        bankCode: value.bankCode,
+        ipAddr:
+          (Array.isArray(ipAddr) ? ipAddr[0] : ipAddr.toString()) ??
+          '127.0.0.1',
+      });
+
+      const response: ApiResponse = {
+        success: true,
+        message: 'Tạo VNPay payment URL thành công',
+        data: result,
+      };
+      res.status(200).json(response);
+    }
+  );
+
+  /**
+   * @desc Xử lý VNPay return URL (redirect từ VNPay)
+   * @route GET /api/payments/vnpay/return
+   */
+  handleVNPayReturn = asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
+      const { error, value } = vnpayReturnSchema.validate(req.query);
+      if (error) {
+        throw new ValidationError(
+          error.details?.[0]?.message || 'Dữ liệu không hợp lệ'
+        );
+      }
+
+      const result = await vnpayService.verifyReturnUrl(value);
+
+      if (!result.isValid) {
+        // Redirect to frontend with error
+        const frontendUrl = process.env.CORS_ORIGIN || 'http://localhost:5173';
+        res.redirect(
+          `${frontendUrl}/payment/result?success=false&message=${encodeURIComponent(result.message || 'Giao dịch thất bại')}`
+        );
+        return;
+      }
+
+      if (result.data?.responseCode !== '00') {
+        // Payment failed
+        const frontendUrl = process.env.CORS_ORIGIN || 'http://localhost:5173';
+        res.redirect(
+          `${frontendUrl}/payment/result?success=false&message=${encodeURIComponent(result.message || 'Thanh toán thất bại')}&txnRef=${result.data?.txnRef}`
+        );
+        return;
+      }
+
+      // Payment success
+      const frontendUrl = process.env.CORS_ORIGIN || 'http://localhost:5173';
+      res.redirect(
+        `${frontendUrl}/payment/result?success=true&message=${encodeURIComponent('Thanh toán thành công')}&txnRef=${result.data?.txnRef}&amount=${result.data?.amount}`
+      );
+    }
+  );
+
+  /**
+   * @desc Xử lý VNPay IPN (Instant Payment Notification)
+   * @route GET /api/payments/vnpay/ipn
+   */
+  handleVNPayIPN = asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
+      const { error, value } = vnpayIPNSchema.validate(req.query);
+      if (error) {
+        res.status(200).json({
+          RspCode: '99',
+          Message: 'Invalid request',
+        });
+        return;
+      }
+
+      const result = await vnpayService.verifyIPN(value);
+      res.status(200).json(result);
     }
   );
 }

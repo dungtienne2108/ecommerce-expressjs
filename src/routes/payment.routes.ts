@@ -206,4 +206,27 @@ router.post(
   paymentController.handleExpiredCashbacks
 );
 
+/**
+ * @route GET /api/payments/vnpay/return
+ * @desc Xử lý VNPay return URL (không cần auth - user redirect từ VNPay)
+ */
+router.get('/vnpay/return', paymentController.handleVNPayReturn);
+
+/**
+ * @route GET /api/payments/vnpay/ipn
+ * @desc Xử lý VNPay IPN (không cần auth - callback từ VNPay server)
+ */
+router.get('/vnpay/ipn', paymentController.handleVNPayIPN);
+
+/**
+ * @route POST /api/payments/vnpay/create
+ * @desc Tạo VNPay payment URL
+ * @access Private - User
+ */
+router.post(
+  '/vnpay/create',
+  combineMiddleware(authenticateToken, requireStatus([UserStatus.ACTIVE])),
+  paymentController.createVNPayPaymentUrl
+);
+
 export default router;
