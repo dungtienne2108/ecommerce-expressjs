@@ -46,6 +46,7 @@ export type CreateOrderInput = {
   customerNote?: string;
   shippingFee?: number;
   discount?: number;
+  voucherCode?: string;
 };
 
 export type UpdateOrderStatusInput = {

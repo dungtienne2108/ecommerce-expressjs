@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // role management
@@ -373,6 +372,7 @@ model Shop {
   kycData  KycData[]  @relation("ShopKyc")
   orders   Order[]
   conversations Conversation[]
+  vouchers        Voucher[]
   
   @@map("shops")
   @@unique([bankName, bankAccountNumber])
@@ -886,6 +886,9 @@ model Order{
   updatedAt       DateTime      @updatedAt @map("updated_at")
   createdBy       String?       @map("created_by")
   updatedBy       String?       @map("updated_by")
+
+  // Voucher
+  voucherId       String?       @map("voucher_id")
   
   // Relations
   user            User          @relation(fields: [userId], references: [id])
@@ -894,6 +897,7 @@ model Order{
   statusHistory   OrderStatusHistory[]
   payments        Payment[]   // 👈 Thêm dòng này
   cashbacks       Cashback[]
+  voucher         Voucher?      @relation(fields: [voucherId], references: [id])
 
   @@map("orders")
   @@index([orderNumber])
@@ -1469,6 +1473,85 @@ model Message {
   @@index([orderId])
   @@index([productId])
   @@index([sentAt])
+  @@index([createdAt])
+  @@index([deletedAt])
+}
+
+// Voucher
+enum VoucherType {
+  PERCENTAGE    // Giảm theo phần trăm (VD: 10%)
+  FIXED_AMOUNT  // Giảm số tiền cố định (VD: 50,000 VND)
+  FREE_SHIPPING // Miễn phí vận chuyển
+}
+
+// Enum cho trạng thái voucher
+enum VoucherStatus {
+  ACTIVE        // Đang hoạt động
+  INACTIVE      // Tạm ngưng
+  EXPIRED       // Hết hạn
+  DEPLETED      // Đã hết lượt sử dụng
+}
+
+// Enum cho phạm vi áp dụng
+enum VoucherScope {
+  ALL           // Áp dụng cho tất cả
+  SHOP          // Chỉ áp dụng cho shop cụ thể
+  CATEGORY      // Áp dụng cho danh mục
+  PRODUCT       // Áp dụng cho sản phẩm cụ thể
+}
+
+model Voucher {
+  id              String        @id @default(uuid())
+  code            String        @unique // Mã voucher (VD: SUMMER2024)
+  name            String        // Tên voucher
+  description     String?       @db.Text
+  
+  // Loại và giá trị giảm
+  type            VoucherType
+  discountValue   Decimal       @map("discount_value") @db.Decimal(15,2) // Giá trị (% hoặc số tiền)
+  maxDiscount     Decimal?      @map("max_discount") @db.Decimal(15,2) // Giảm tối đa (cho PERCENTAGE)
+  
+  // Điều kiện áp dụng
+  minOrderValue   Decimal?      @map("min_order_value") @db.Decimal(15,2) // Giá trị đơn hàng tối thiểu
+  scope           VoucherScope  @default(ALL)
+  
+  // Shop (nếu là voucher của shop)
+  shopId          String?       @map("shop_id")
+  
+  // Số lượng và giới hạn
+  totalLimit      Int?          @map("total_limit") // Tổng số lượt sử dụng
+  usedCount       Int           @default(0) @map("used_count") // Đã sử dụng
+  limitPerUser    Int?          @map("limit_per_user") // Giới hạn mỗi user
+  
+  // Thời gian hiệu lực
+  startDate       DateTime      @map("start_date")
+  endDate         DateTime      @map("end_date")
+  
+  // Trạng thái
+  status          VoucherStatus @default(ACTIVE)
+  isPublic        Boolean       @default(true) @map("is_public") // Public hay private
+  
+  // Auditable fields
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  createdBy       String?       @map("created_by")
+  updatedBy       String?       @map("updated_by")
+  
+  // Soft delete
+  deletedAt       DateTime?     @map("deleted_at")
+  deletedBy       String?       @map("deleted_by")
+  
+  // Relations
+  shop            Shop?         @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  orders          Order[]       // Orders đã sử dụng voucher này
+  
+  @@map("vouchers")
+  @@index([code])
+  @@index([shopId])
+  @@index([status])
+  @@index([scope])
+  @@index([startDate])
+  @@index([endDate])
   @@index([createdAt])
   @@index([deletedAt])
 }

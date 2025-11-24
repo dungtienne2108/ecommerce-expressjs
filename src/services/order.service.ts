@@ -22,179 +22,17 @@ import redis from '../config/redis';
 import { CacheUtil } from '../utils/cache.util';
 import { filter } from 'compression';
 import { Web3CashbackService } from './web3Cashback.service';
+import { VoucherService } from './voucher.service';
 
 export class OrderService {
   private web3CashbackService: Web3CashbackService;
+  private voucherService: VoucherService;
 
   constructor(private uow: IUnitOfWork) {
     this.web3CashbackService = new Web3CashbackService(uow);
+    this.voucherService = new VoucherService(uow);
   }
 
-  // /**
-  //  * Tạo đơn hàng từ giỏ hàng của người dùng
-  //  * @param userId
-  //  * @param input thông tin tạo đơn hàng
-  //  * @returns
-  //  */
-  // async createOrderFromCart(
-  //   userId: string,
-  //   input: CreateOrderInput
-  // ): Promise<OrderResponse> {
-  //   return this.uow.executeInTransaction(async (uow) => {
-  //     // lấy giỏ hàng
-  //     const cart = await uow.cart.findByUserIdWithItems(userId);
-  //     if (!cart || cart.items.length === 0) {
-  //       throw new ValidationError('Giỏ hàng trống');
-  //     }
-
-  //     const cartItems = cart.items;
-
-  //     // lấy tất cả variant từ giỏ hàng
-  //     const variantIds = cartItems.map(item => item.productVariantId);
-  //     const allVariants = await uow.productVariants.findByIds(variantIds, {
-  //       product: true
-  //     });
-
-  //     if (!allVariants || allVariants.length === 0) {
-  //       throw new NotFoundError('Không có sản phẩm nào trong giỏ hàng');
-  //     }
-
-  //     const variantMap = new Map(allVariants.map(v => [v.id, v]));
-
-  //     let shopId: string | null = null;
-  //     const orderItemsData = [];
-
-  //     for (const item of cartItems) {
-  //       const variant = variantMap.get(item.productVariantId);
-
-  //       if (!variant) {
-  //         throw new NotFoundError(`Sản phẩm ${item.productName} không tồn tại`);
-  //       }
-
-  //       if (!variant.product?.shopId) {
-  //         throw new NotFoundError('Cửa hàng không tồn tại');
-  //       }
-
-  //       // Set shopId from first item
-  //       if (!shopId) {
-  //         shopId = variant.product.shopId;
-  //       }
-
-  //       // Check all items belong to same shop
-  //       if (variant.product.shopId !== shopId) {
-  //         throw new ValidationError(
-  //           'Tất cả sản phẩm trong giỏ hàng phải thuộc cùng một cửa hàng'
-  //         );
-  //       }
-
-  //       // Check stock availability
-  //       if (variant.stock < item.quantity) {
-  //         throw new ValidationError(
-  //           `Sản phẩm "${item.productName}" không đủ số lượng trong kho (còn ${variant.stock})`
-  //         );
-  //       }
-
-  //       // Prepare order item data
-  //       orderItemsData.push({
-  //         orderId: '', // Will be set after order creation
-  //         productId: item.productId,
-  //         productVariantId: item.productVariantId,
-  //         quantity: item.quantity,
-  //         unitPrice: item.unitPrice,
-  //         totalPrice: item.totalPrice,
-  //         productName: item.productName,
-  //         variantName: item.variantName,
-  //         productImageUrl: item.productImageUrl,
-  //         sku: variant.sku || '',
-  //       });
-  //     }
-
-  //     if (!shopId) {
-  //       throw new NotFoundError('Cửa hàng không tồn tại');
-  //     }
-
-  //     // Calculate totals
-  //     const subTotal = cartItems.reduce(
-  //       (sum, item) => sum + Number(item.totalPrice),
-  //       0
-  //     );
-
-  //     const shippingFee = input.shippingFee ?? 0;
-  //     const discount = input.discount ?? 0;
-  //     const totalAmount = subTotal + shippingFee - discount;
-
-  //     // Create order
-  //     const orderNumber = await this.generateOrderNumber();
-
-  //     const order = await uow.orders.create({
-  //       orderNumber,
-  //       user: { connect: { id: userId } },
-  //       shop: { connect: { id: shopId } },
-  //       status: OrderStatus.PENDING,
-  //       paymentStatus: PaymentStatus.PENDING,
-  //       subtotal: subTotal,
-  //       shippingFee,
-  //       discount,
-  //       totalAmount,
-  //       shippingMethod: input.shippingMethod,
-  //       shippingAddress: input.shippingAddress,
-  //       recipientName: input.recipientName,
-  //       recipientPhone: input.recipientPhone,
-  //       paymentMethod: input.paymentMethod,
-  //       customerNote: input.customerNote ?? null,
-  //       createdBy: userId,
-  //     });
-
-  //     // Set orderId for all items and create them
-  //     for (const item of orderItemsData) {
-  //       item.orderId = order.id;
-  //     }
-  //     await uow.orderItems.createMany(orderItemsData);
-
-  //     // 🔥 OPTIMIZED: Batch update stocks with chunking to avoid overload
-  //     const stockUpdates: Array<{ id: string; quantity: number }> = [];
-  //     for (const item of cartItems) {
-  //       const variant = variantMap.get(item.productVariantId);
-  //       if (variant) {
-  //         stockUpdates.push({
-  //           id: item.productVariantId,
-  //           quantity: variant.stock - item.quantity
-  //         });
-  //       }
-  //     }
-
-  //     // Chunk updates to avoid overwhelming the database
-  //     // Max 10 concurrent updates per chunk
-  //     const CHUNK_SIZE = 10;
-  //     for (let i = 0; i < stockUpdates.length; i += CHUNK_SIZE) {
-  //       const chunk = stockUpdates.slice(i, i + CHUNK_SIZE);
-  //       await Promise.all(
-  //         chunk.map(update =>
-  //           uow.productVariants.update(update.id, { stock: update.quantity })
-  //         )
-  //       );
-  //     }
-
-  //     // Create payment
-  //     await this.createPaymentForOrder(uow, order, input.paymentMethod);
-
-  //     // 🔥 OPTIMIZED: Batch delete cart items
-  //     await uow.cartItem.deleteByCartId(cart.id);
-
-  //     // Fetch final order with items
-  //     const createdOrder = await uow.orders.findByIdWithItems(order.id);
-  //     if (!createdOrder) {
-  //       throw new NotFoundError('Đơn hàng không tồn tại');
-  //     }
-
-  //     // Invalidate cache (async, don't wait)
-  //     this.invalidateOrderCache(userId, shopId).catch(err =>
-  //       console.error('Cache invalidation error:', err)
-  //     );
-
-  //     return this.mapToOrderResponse(createdOrder);
-  //   });
-  // }
   async createOrderFromCart(
     userId: string,
     input: CreateOrderInput
@@ -266,9 +104,29 @@ export class OrderService {
       }
 
       // tính tổng đơn hàng
-      const totalAmount =
-        subTotal + (input.shippingFee ?? 0) - (input.discount ?? 0);
       const orderNumber = await this.generateOrderNumber();
+
+      // áp dụng voucher
+      let discount = 0;
+      let voucherId: string | null = null;
+      if (input.voucherCode) {
+        const voucherResult = await this.voucherService.validateAndApplyVoucher(
+          input.voucherCode,
+          userId,
+          shopId!,
+          cart.items,
+          subTotal
+        );
+
+        if (!voucherResult.isValid) {
+          throw new ValidationError(voucherResult.error || 'Voucher không hợp lệ');
+        }
+
+        discount = voucherResult.discountAmount;
+        voucherId = voucherResult.voucherId || null;
+      }
+
+      const totalAmount = subTotal + (input.shippingFee ?? 0) - discount;
 
       // tạo đơn hàng
       const order = await uow.orders.create({
@@ -279,11 +137,16 @@ export class OrderService {
         paymentStatus: PaymentStatus.PENDING,
         subtotal: subTotal,
         shippingFee: input.shippingFee ?? 0,
-        discount: input.discount ?? 0,
+        discount: discount,
         totalAmount,
         ...input,
         createdBy: userId,
       });
+
+      if (voucherId){
+        await uow.vouchers.incrementUsedCount(voucherId);
+        await uow.orders.update(order.id, { voucher: { connect: { id: voucherId } } });
+      }
 
       // chạy song song các thao tác tạo order items, cập nhật tồn kho, tạo payment, xóa cart items
       await Promise.all([
