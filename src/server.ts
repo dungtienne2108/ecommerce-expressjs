@@ -2,11 +2,12 @@ import http from 'http';
 import { createApp } from './app';
 import { testDatabaseConnection, disconnectDatabase } from './config/prisma';
 import { redis } from './config/redis';
-import { cashbackCronService } from './config/container';
-import { createSocketServer, setSocketServer } from './config/socket';
-import { initializeSocketHandlers } from './sockets';
+import { cashbackCronService, uow } from './config/container';
+import { SocketGateway } from './gateway/socket.gateway';
+import { SocketService } from './services/socket.service';
 
 let server: http.Server;
+let socketGateway: SocketGateway;
 
 export async function startServer(port: number) {
   // Kết nối phụ trợ trước khi lắng nghe
@@ -16,9 +17,8 @@ export async function startServer(port: number) {
   const app = createApp();
   server = http.createServer(app);
 
-  const io = createSocketServer(server);
-  setSocketServer(io);
-  initializeSocketHandlers(io);
+  socketGateway = new SocketGateway(server, uow);
+  SocketService.setGateway(socketGateway);
 
   server.listen(port, () => {
     console.log(`🚀 Server chạy ở cổng :${port}`);
@@ -39,6 +39,10 @@ export async function stopServer() {
   console.log('Dừng...');
   
  // cashbackCronService.stop();
+
+  if (socketGateway) {
+    socketGateway.getIO().close();
+  }
 
   await new Promise<void>((resolve) =>
     server?.close(() => resolve())

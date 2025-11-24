@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Socket.IO Chat Test</title>
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: Arial;
+        background: #f5f5f5;
+        padding: 20px;
+      }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+      }
+      .panel {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+      h2 {
+        color: #333;
+        margin-bottom: 15px;
+        border-bottom: 2px solid #007bff;
+        padding-bottom: 10px;
+      }
+      .form-group {
+        margin-bottom: 12px;
+      }
+      label {
+        display: block;
+        font-weight: bold;
+        margin-bottom: 5px;
+        color: #555;
+      }
+      input,
+      textarea,
+      select {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+      }
+      textarea {
+        resize: vertical;
+        min-height: 80px;
+      }
+      button {
+        width: 100%;
+        padding: 10px;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+        margin-top: 10px;
+      }
+      button:hover {
+        background: #0056b3;
+      }
+      button.danger {
+        background: #dc3545;
+      }
+      button.danger:hover {
+        background: #c82333;
+      }
+      .logs {
+        background: #f9f9f9;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 15px;
+        height: 400px;
+        overflow-y: auto;
+        font-size: 12px;
+        font-family: monospace;
+      }
+      .log-entry {
+        margin-bottom: 8px;
+        padding: 8px;
+        background: white;
+        border-left: 3px solid #007bff;
+      }
+      .log-entry.error {
+        border-left-color: #dc3545;
+        color: #dc3545;
+      }
+      .log-entry.success {
+        border-left-color: #28a745;
+        color: #28a745;
+      }
+      .log-entry.info {
+        border-left-color: #17a2b8;
+        color: #17a2b8;
+      }
+      .status {
+        margin-bottom: 15px;
+        padding: 10px;
+        border-radius: 4px;
+        text-align: center;
+        font-weight: bold;
+      }
+      .status.connected {
+        background: #d4edda;
+        color: #155724;
+      }
+      .status.disconnected {
+        background: #f8d7da;
+        color: #721c24;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <!-- User 1 Panel -->
+      <div class="panel">
+        <h2>👤 User 1 (Người Gửi)</h2>
+        <div id="status1" class="status disconnected">⚫ Disconnected</div>
+
+        <div class="form-group">
+          <label>JWT Token User 1</label>
+          <input type="password" id="token1" placeholder="Paste token here" />
+        </div>
+
+        <div class="form-group">
+          <label>Conversation ID</label>
+          <input type="text" id="convId1" placeholder="e.g., conv-uuid" />
+        </div>
+
+        <button onclick="connectUser1()">🔗 Connect User 1</button>
+        <button onclick="disconnectUser1()" class="danger">
+          🔌 Disconnect User 1
+        </button>
+
+        <div style="margin-top: 20px">
+          <h3 style="font-size: 16px; margin-bottom: 10px">📨 Send Message</h3>
+          <textarea
+            id="msgContent1"
+            placeholder="Message content..."
+          ></textarea>
+          <select id="msgType1">
+            <option value="TEXT">TEXT</option>
+            <option value="IMAGE">IMAGE</option>
+            <option value="FILE">FILE</option>
+          </select>
+          <button onclick="sendMessage1()" style="background: #28a745">
+            📤 Send Message
+          </button>
+        </div>
+
+        <div style="margin-top: 20px">
+          <h3 style="font-size: 16px; margin-bottom: 10px">
+            ⌨️ Typing Indicators
+          </h3>
+          <button onclick="typing1()" style="background: #ffc107; color: black">
+            Typing...
+          </button>
+          <button onclick="stopTyping1()" style="background: #6c757d">
+            Stop Typing
+          </button>
+        </div>
+
+        <div style="margin-top: 20px">
+          <h3 style="font-size: 16px; margin-bottom: 10px">
+            📋 Messages (copy IDs)
+          </h3>
+          <div
+            id="msgList1"
+            style="
+              background: #f9f9f9;
+              padding: 10px;
+              border-radius: 4px;
+              min-height: 150px;
+              max-height: 200px;
+              overflow-y: auto;
+              font-size: 12px;
+            "
+          >
+            <em>Messages will appear here...</em>
+          </div>
+        </div>
+
+        <div style="margin-top: 15px">
+          <h3 style="font-size: 16px; margin-bottom: 10px">✅ Mark As Read</h3>
+          <input
+            type="text"
+            id="msgIds1"
+            placeholder="Paste message IDs (comma-separated)"
+          />
+          <button onclick="markAsRead1()" style="background: #20c997">
+            Mark Read
+          </button>
+        </div>
+
+        <h3 style="font-size: 16px; margin-top: 20px; margin-bottom: 10px">
+          📡 Logs
+        </h3>
+        <div id="logs1" class="logs"></div>
+      </div>
+
+      <!-- User 2 Panel -->
+      <div class="panel">
+        <h2>👤 User 2 (Người Nhận)</h2>
+        <div id="status2" class="status disconnected">⚫ Disconnected</div>
+
+        <div class="form-group">
+          <label>JWT Token User 2</label>
+          <input type="password" id="token2" placeholder="Paste token here" />
+        </div>
+
+        <div class="form-group">
+          <label>Conversation ID</label>
+          <input type="text" id="convId2" placeholder="e.g., conv-uuid" />
+        </div>
+
+        <button onclick="connectUser2()">🔗 Connect User 2</button>
+        <button onclick="disconnectUser2()" class="danger">
+          🔌 Disconnect User 2
+        </button>
+
+        <div style="margin-top: 20px">
+          <h3 style="font-size: 16px; margin-bottom: 10px">📨 Send Message</h3>
+          <textarea
+            id="msgContent2"
+            placeholder="Message content..."
+          ></textarea>
+          <select id="msgType2">
+            <option value="TEXT">TEXT</option>
+            <option value="IMAGE">IMAGE</option>
+            <option value="FILE">FILE</option>
+          </select>
+          <button onclick="sendMessage2()" style="background: #28a745">
+            📤 Send Message
+          </button>
+        </div>
+
+        <div style="margin-top: 20px">
+          <h3 style="font-size: 16px; margin-bottom: 10px">
+            ⌨️ Typing Indicators
+          </h3>
+          <button onclick="typing2()" style="background: #ffc107; color: black">
+            Typing...
+          </button>
+          <button onclick="stopTyping2()" style="background: #6c757d">
+            Stop Typing
+          </button>
+        </div>
+
+        <div style="margin-top: 20px">
+          <h3 style="font-size: 16px; margin-bottom: 10px">
+            📋 Messages (copy IDs)
+          </h3>
+          <div
+            id="msgList2"
+            style="
+              background: #f9f9f9;
+              padding: 10px;
+              border-radius: 4px;
+              min-height: 150px;
+              max-height: 200px;
+              overflow-y: auto;
+              font-size: 12px;
+            "
+          >
+            <em>Messages will appear here...</em>
+          </div>
+        </div>
+
+        <div style="margin-top: 15px">
+          <h3 style="font-size: 16px; margin-bottom: 10px">✅ Mark As Read</h3>
+          <input
+            type="text"
+            id="msgIds2"
+            placeholder="Paste message IDs (comma-separated)"
+          />
+          <button onclick="markAsRead2()" style="background: #20c997">
+            Mark Read
+          </button>
+        </div>
+
+        <h3 style="font-size: 16px; margin-top: 20px; margin-bottom: 10px">
+          📡 Logs
+        </h3>
+        <div id="logs2" class="logs"></div>
+      </div>
+    </div>
+
+    <script>
+      let socket1 = null,
+        socket2 = null;
+      let messages1 = [],
+        messages2 = [];
+
+      function log(userId, message, type = 'info') {
+        const logsDiv = document.getElementById(`logs${userId}`);
+        const entry = document.createElement('div');
+        entry.className = `log-entry ${type}`;
+        entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+        logsDiv.appendChild(entry);
+        logsDiv.scrollTop = logsDiv.scrollHeight;
+      }
+
+      function updateStatus(userId, connected) {
+        const statusDiv = document.getElementById(`status${userId}`);
+        statusDiv.className = `status ${connected ? 'connected' : 'disconnected'}`;
+        statusDiv.textContent = connected ? '🟢 Connected' : '⚫ Disconnected';
+      }
+
+      function setupSocket(userId) {
+        const token = document.getElementById(`token${userId}`).value;
+        const convId = document.getElementById(`convId${userId}`).value;
+
+        if (!token) {
+          log(userId, 'Token is required!', 'error');
+          return;
+        }
+
+        if (!convId) {
+          log(userId, 'Conversation ID is required!', 'error');
+          return;
+        }
+
+        const socket = io('http://localhost:5000', {
+          auth: { token },
+        });
+
+        socket.on('connect', () => {
+          log(userId, `Connected (Socket ID: ${socket.id})`, 'success');
+          updateStatus(userId, true);
+          socket.emit('join-conversation', convId);
+          log(userId, `Joined conversation: ${convId}`, 'success');
+        });
+
+        socket.on('message-received', (message) => {
+          log(
+            userId,
+            `📩 Message received from ${message.sender?.email || 'Unknown'}`,
+            'success'
+          );
+          log(userId, `Content: ${message.content}`, 'info');
+          log(userId, `Message ID: ${message.id}`, 'info');
+          const msgList = document.getElementById(`msgList${userId}`);
+          const msgDiv = document.createElement('div');
+          msgDiv.style.cursor = 'pointer';
+          msgDiv.style.padding = '8px';
+          msgDiv.style.background = '#e7f3ff';
+          msgDiv.style.marginBottom = '5px';
+          msgDiv.style.borderRadius = '4px';
+          msgDiv.textContent = `${message.sender?.email}: ${message.content} [${message.id}]`;
+          msgDiv.onclick = () => {
+            document.getElementById(`msgIds${userId}`).value = message.id;
+          };
+          msgList.appendChild(msgDiv);
+          messages1.push(message) || messages2.push(message);
+        });
+
+        socket.on('user-typing', (data) => {
+          log(userId, `✍️ ${data.userName} is typing...`, 'info');
+        });
+
+        socket.on('user-stop-typing', (data) => {
+          log(userId, `⏹️ ${data.userId} stopped typing`, 'info');
+        });
+
+        socket.on('messages-marked-read', (data) => {
+          log(
+            userId,
+            `✅ ${data.messageIds.length} messages marked as read`,
+            'success'
+          );
+        });
+
+        socket.on('error', (error) => {
+          log(userId, `❌ Error: ${error.message}`, 'error');
+        });
+
+        socket.on('disconnect', () => {
+          log(userId, 'Disconnected', 'error');
+          updateStatus(userId, false);
+        });
+
+        return socket;
+      }
+
+      function connectUser1() {
+        socket1 = setupSocket(1);
+      }
+      function connectUser2() {
+        socket2 = setupSocket(2);
+      }
+
+      function disconnectUser1() {
+        socket1?.disconnect();
+        socket1 = null;
+      }
+      function disconnectUser2() {
+        socket2?.disconnect();
+        socket2 = null;
+      }
+
+      function sendMessage1() {
+        if (!socket1) {
+          log(1, 'Not connected!', 'error');
+          return;
+        }
+        const content = document.getElementById('msgContent1').value;
+        const type = document.getElementById('msgType1').value;
+        const convId = document.getElementById('convId1').value;
+        if (!content) {
+          log(1, 'Message content is required!', 'error');
+          return;
+        }
+        socket1.emit('send-message', { conversationId: convId, content, type });
+        log(1, `📤 Sending: ${content}`, 'success');
+        document.getElementById('msgContent1').value = '';
+      }
+
+      function sendMessage2() {
+        if (!socket2) {
+          log(2, 'Not connected!', 'error');
+          return;
+        }
+        const content = document.getElementById('msgContent2').value;
+        const type = document.getElementById('msgType2').value;
+        const convId = document.getElementById('convId2').value;
+        if (!content) {
+          log(2, 'Message content is required!', 'error');
+          return;
+        }
+        socket2.emit('send-message', { conversationId: convId, content, type });
+        log(2, `📤 Sending: ${content}`, 'success');
+        document.getElementById('msgContent2').value = '';
+      }
+
+      function typing1() {
+        if (!socket1) {
+          log(1, 'Not connected!', 'error');
+          return;
+        }
+        socket1.emit('typing', document.getElementById('convId1').value);
+      }
+
+      function typing2() {
+        if (!socket2) {
+          log(2, 'Not connected!', 'error');
+          return;
+        }
+        socket2.emit('typing', document.getElementById('convId2').value);
+      }
+
+      function stopTyping1() {
+        if (!socket1) {
+          log(1, 'Not connected!', 'error');
+          return;
+        }
+        socket1.emit('stop-typing', document.getElementById('convId1').value);
+      }
+
+      function stopTyping2() {
+        if (!socket2) {
+          log(2, 'Not connected!', 'error');
+          return;
+        }
+        socket2.emit('stop-typing', document.getElementById('convId2').value);
+      }
+
+      function markAsRead1() {
+        if (!socket1) {
+          log(1, 'Not connected!', 'error');
+          return;
+        }
+        const msgIds = document
+          .getElementById('msgIds1')
+          .value.split(',')
+          .map((id) => id.trim())
+          .filter((id) => id);
+        if (msgIds.length === 0) {
+          log(1, 'No message IDs!', 'error');
+          return;
+        }
+        socket1.emit('mark-as-read', {
+          conversationId: document.getElementById('convId1').value,
+          messageIds: msgIds,
+        });
+        log(1, `✅ Marked ${msgIds.length} messages as read`, 'success');
+      }
+
+      function markAsRead2() {
+        if (!socket2) {
+          log(2, 'Not connected!', 'error');
+          return;
+        }
+        const msgIds = document
+          .getElementById('msgIds2')
+          .value.split(',')
+          .map((id) => id.trim())
+          .filter((id) => id);
+        if (msgIds.length === 0) {
+          log(2, 'No message IDs!', 'error');
+          return;
+        }
+        socket2.emit('mark-as-read', {
+          conversationId: document.getElementById('convId2').value,
+          messageIds: msgIds,
+        });
+        log(2, `✅ Marked ${msgIds.length} messages as read`, 'success');
+      }
+    </script>
+  </body>
+</html>

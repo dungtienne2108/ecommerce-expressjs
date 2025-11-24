@@ -34,8 +34,8 @@ export interface IUnitOfWork {
   orderStatusHistory: IOrderStatusHistoryRepository;
   payments: IPaymentRepository;
   cashbacks: ICashbackRepository;
-  conversations: IConversationRepository;
   messages: IMessageRepository;
+  conversations: IConversationRepository;
   conversationParticipants: IConversationParticipantRepository;
 
   executeInTransaction<T>(operation: (uow: IUnitOfWork) => Promise<T>): Promise<T>; // saveChanges

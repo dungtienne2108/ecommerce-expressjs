@@ -27,12 +27,13 @@ import { IPaymentRepository } from '../interfaces/payment.interface';
 import { ICashbackRepository } from '../interfaces/cashback.interface';
 import { CashbackRepository } from './cashback.repository';
 import { PaymentRepository } from './payment.repository';
-import { IConversationRepository } from '../interfaces/conversation.interface';
 import { IMessageRepository } from '../interfaces/message.interface';
+import { IConversationParticipantRepository } from '../interfaces/conversationParticipant.interface';
+import { IConversationRepository } from '../interfaces/conversation.interface';
+import { ConversationParticipantRepository } from './conversationParticipant.repository';
 import { ConversationRepository } from './conversation.repository';
 import { MessageRepository } from './message.repository';
-import { IConversationParticipantRepository } from '../interfaces/conversationParticipant.interface';
-import { ConversationParticipantRepository } from './conversationParticipant.repository';
+
 
 export class UnitOfWork implements IUnitOfWork {
   private isInTransaction = false;
@@ -56,8 +57,8 @@ export class UnitOfWork implements IUnitOfWork {
   private _orderStatusHistory: IOrderStatusHistoryRepository;
   private _payments: IPaymentRepository;
   private _cashbacks: ICashbackRepository;
-  private _conversations: IConversationRepository;
   private _messages: IMessageRepository;
+  private _conversations: IConversationRepository;
   private _conversationParticipants: IConversationParticipantRepository;
 
   constructor(private prisma: PrismaClient) {
@@ -81,8 +82,8 @@ export class UnitOfWork implements IUnitOfWork {
     this._orderStatusHistory = new OrderStatusHistoryRepository(this.prisma);
     this._payments = new PaymentRepository(this.prisma);
     this._cashbacks = new CashbackRepository(this.prisma);
-    this._conversations = new ConversationRepository(this.prisma);
     this._messages = new MessageRepository(this.prisma);
+    this._conversations = new ConversationRepository(this.prisma);
     this._conversationParticipants = new ConversationParticipantRepository(this.prisma);
   }
 
@@ -166,12 +167,12 @@ export class UnitOfWork implements IUnitOfWork {
     return this._cashbacks;
   }
 
-  get conversations(): IConversationRepository {
-    return this._conversations;
-  }
-
   get messages(): IMessageRepository {
     return this._messages;
+  }
+
+  get conversations(): IConversationRepository {
+    return this._conversations;
   }
 
   get conversationParticipants(): IConversationParticipantRepository {

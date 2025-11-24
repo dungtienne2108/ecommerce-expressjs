@@ -8,8 +8,8 @@ import cartRoutes from './cart.routes';
 import orderRoutes from './order.routes';
 import adminRoutes from './admin.routes';
 import categoryRoutes from './category.route';
-import chatRoutes from './chat.routes';
 import paymentRoutes from './payment.routes';
+import chatRoutes from './chat.route';
 
 const router = Router();
 
@@ -40,7 +40,7 @@ router.use('/api/cart', cartRoutes);
 router.use('/api/orders', orderRoutes);
 router.use('/api/admin', adminRoutes);
 router.use('/api/categories', categoryRoutes);
-router.use('/api/chat', chatRoutes);
 router.use('/api/payments', paymentRoutes);
+router.use('/api/chat', chatRoutes);
 
 export default router;
