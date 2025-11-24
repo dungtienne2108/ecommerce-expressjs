@@ -828,6 +828,7 @@ enum PaymentMethod {
   BANK_TRANSFER    // Chuyển khoản
   E_WALLET         // Ví điện tử
   CREDIT_CARD      // Thẻ tín dụng
+  VNPAY            // VNPay payment gateway
 }
 
 enum PaymentStatus {

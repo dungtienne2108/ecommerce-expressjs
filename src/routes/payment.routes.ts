@@ -11,7 +11,7 @@ import { paymentController } from '../controllers/payment.controller';
 const router = Router();
 
 /**
- * PUBLIC ROUTES (với webhook)
+ * PUBLIC ROUTES (với webhook và VNPay return/IPN)
  */
 
 /**
@@ -19,6 +19,18 @@ const router = Router();
  * @desc Xử lý webhook từ payment gateway (không cần auth)
  */
 router.post('/webhook', paymentController.handlePaymentWebhook);
+
+/**
+ * @route GET /api/payments/vnpay/return
+ * @desc Xử lý VNPay return URL (không cần auth - user redirect từ VNPay)
+ */
+router.get('/vnpay/return', paymentController.handleVNPayReturn);
+
+/**
+ * @route GET /api/payments/vnpay/ipn
+ * @desc Xử lý VNPay IPN (không cần auth - callback từ VNPay server)
+ */
+router.get('/vnpay/ipn', paymentController.handleVNPayIPN);
 
 /**
  * PROTECTED ROUTES (yêu cầu đăng nhập và active status)
@@ -33,6 +45,21 @@ router.post(
   '/',
   combineMiddleware(authenticateToken, requireStatus([UserStatus.ACTIVE])),
   paymentController.createPayment
+);
+
+/**
+ * VNPAY ROUTES
+ */
+
+/**
+ * @route POST /api/payments/vnpay/create
+ * @desc Tạo VNPay payment URL
+ * @access Private - User
+ */
+router.post(
+  '/vnpay/create',
+  combineMiddleware(authenticateToken, requireStatus([UserStatus.ACTIVE])),
+  paymentController.createVNPayPaymentUrl
 );
 
 /**
