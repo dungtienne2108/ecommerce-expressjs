@@ -218,10 +218,17 @@ export class VNPayService {
     RspCode: string;
     Message: string;
   }> {
+    console.log('🔔 [VNPay IPN] Received IPN callback');
+    console.log('📦 [VNPay IPN] Params:', JSON.stringify(params, null, 2));
+
     try {
       const secureHash = params.vnp_SecureHash;
       const txnRef = params.vnp_TxnRef;
       const responseCode = params.vnp_ResponseCode;
+
+      console.log('🔍 [VNPay IPN] Transaction Reference:', txnRef);
+      console.log('🔍 [VNPay IPN] Response Code:', responseCode);
+      console.log('🔍 [VNPay IPN] Secure Hash:', secureHash);
 
       // Kiểm tra checksum
       const vnpParams = { ...params };
@@ -232,25 +239,48 @@ export class VNPayService {
       const signData = querystring.stringify(sortedParams, { encode: false });
       const checkSum = this.createSecureHash(signData, this.config.hashSecret);
 
+      console.log('🔐 [VNPay IPN] Sign Data:', signData);
+      console.log('🔐 [VNPay IPN] Calculated CheckSum:', checkSum);
+      console.log('🔐 [VNPay IPN] Received SecureHash:', secureHash);
+
       if (secureHash !== checkSum) {
+        console.error('❌ [VNPay IPN] Invalid Checksum!');
         return {
           RspCode: '97',
           Message: 'Invalid Checksum',
         };
       }
 
+      console.log('✅ [VNPay IPN] Checksum verified successfully');
+
       // Tìm payment theo transaction reference
+      console.log('🔍 [VNPay IPN] Finding payment by transaction reference:', txnRef);
       const payment = await this.uow.payments.findByTransactionId(txnRef);
+
       if (!payment) {
+        console.error('❌ [VNPay IPN] Payment not found for txnRef:', txnRef);
         return {
           RspCode: '01',
           Message: 'Order Not Found',
         };
       }
 
+      console.log('✅ [VNPay IPN] Payment found:', {
+        paymentId: payment.id,
+        orderId: payment.orderId,
+        amount: payment.amount,
+        status: payment.status,
+      });
+
       // Kiểm tra số tiền
       const amount = parseInt(params.vnp_Amount, 10) / 100;
+      console.log('💰 [VNPay IPN] Amount check:', {
+        vnpayAmount: amount,
+        paymentAmount: Number(payment.amount),
+      });
+
       if (amount !== Number(payment.amount)) {
+        console.error('❌ [VNPay IPN] Amount mismatch!');
         return {
           RspCode: '04',
           Message: 'Invalid Amount',
@@ -259,6 +289,7 @@ export class VNPayService {
 
       // Kiểm tra payment đã được xử lý chưa
       if (payment.status === PaymentStatus.PAID) {
+        console.warn('⚠️  [VNPay IPN] Payment already confirmed');
         return {
           RspCode: '02',
           Message: 'Order Already Confirmed',
@@ -267,8 +298,11 @@ export class VNPayService {
 
       // Cập nhật payment status
       if (responseCode === VNPayResponseCode.SUCCESS) {
+        console.log('✅ [VNPay IPN] Processing successful payment...');
+
         await this.uow.executeInTransaction(async (uow) => {
           // Cập nhật payment
+          console.log('📝 [VNPay IPN] Updating payment status to PAID');
           await uow.payments.updateStatus(payment.id, PaymentStatus.PAID, {
             paidAt: new Date(),
             transactionId: params.vnp_TransactionNo,
@@ -280,10 +314,13 @@ export class VNPayService {
           });
 
           // Cập nhật order
+          console.log('📝 [VNPay IPN] Updating order payment status');
           await uow.orders.update(payment.orderId, {
             paymentStatus: PaymentStatus.PAID,
             paidAt: new Date(),
           });
+
+          console.log('✅ [VNPay IPN] Payment and order updated successfully');
         });
 
         return {
@@ -292,6 +329,9 @@ export class VNPayService {
         };
       } else {
         // Giao dịch thất bại
+        console.log('❌ [VNPay IPN] Processing failed payment...');
+        console.log('❌ [VNPay IPN] Failure reason:', VNPayResponseMessage[responseCode]);
+
         await this.uow.payments.updateStatus(payment.id, PaymentStatus.FAILED, {
           failedAt: new Date(),
           failureReason: VNPayResponseMessage[responseCode] || 'Giao dịch thất bại',
@@ -302,13 +342,16 @@ export class VNPayService {
           },
         });
 
+        console.log('✅ [VNPay IPN] Payment marked as failed');
+
         return {
           RspCode: '00',
           Message: 'Confirm Success',
         };
       }
     } catch (error) {
-      console.error('Error verifying VNPay IPN:', error);
+      console.error('💥 [VNPay IPN] Error verifying IPN:', error);
+      console.error('💥 [VNPay IPN] Error stack:', error instanceof Error ? error.stack : 'Unknown');
       return {
         RspCode: '99',
         Message: 'Unknown Error',

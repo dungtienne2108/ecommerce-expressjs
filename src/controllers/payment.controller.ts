@@ -496,8 +496,12 @@ export class PaymentController {
    */
   handleVNPayIPN = asyncHandler(
     async (req: Request, res: Response): Promise<void> => {
+      console.log('🌐 [Controller] VNPay IPN endpoint hit');
+      console.log('🌐 [Controller] Query params:', req.query);
+
       const { error, value } = vnpayIPNSchema.validate(req.query);
       if (error) {
+        console.error('❌ [Controller] Validation error:', error.details);
         res.status(200).json({
           RspCode: '99',
           Message: 'Invalid request',
@@ -505,8 +509,10 @@ export class PaymentController {
         return;
       }
 
+      console.log('✅ [Controller] Validation passed, calling verifyIPN...');
       const result = await this.vnpayService.verifyIPN(value);
 
+      console.log('📤 [Controller] Sending response to VNPay:', result);
       res.status(200).json(result);
     }
   );
