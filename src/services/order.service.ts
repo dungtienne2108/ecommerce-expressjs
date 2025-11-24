@@ -535,7 +535,7 @@ export class OrderService {
 
       const roles = await uow.userRoles.findByUserIdWithRoles(updatedBy);
       const isAdmin = roles.some((r) => r.role.type === 'SYSTEM_ADMIN');
-      
+
       if (order.userId !== updatedBy && !isAdmin) {
         const shop = await uow.shops.findById(order.shopId);
         if (!shop || shop.ownerId !== updatedBy) {
@@ -661,11 +661,9 @@ export class OrderService {
 
   //#region private
   private async generateOrderNumber(): Promise<string> {
-    const timestamp = Date.now();
-    const random = Math.floor(Math.random() * 1000)
-      .toString()
-      .padStart(3, '0');
-    return `ORD${timestamp}${random}`;
+    const orderCount = await this.uow.orders.count();
+
+    return `ORD${orderCount + 1}`;
   }
 
   /**
@@ -841,7 +839,8 @@ export class OrderService {
       }
 
       const cashbackPercentage = 5; // 5%
-      const cashbackAmount = (Number(payment.amount) * cashbackPercentage) / 100;
+      const cashbackAmount =
+        (Number(payment.amount) * cashbackPercentage) / 100;
 
       // Tạo cashback với trạng thái PENDING
       const eligibleAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 ngày sau

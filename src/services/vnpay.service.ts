@@ -14,6 +14,7 @@ import {
 import { ValidationError, NotFoundError } from '../errors/AppError';
 import { PaymentMethod, PaymentStatus } from '@prisma/client';
 import dayjs from 'dayjs';
+import { paymentService } from '../config/container';
 
 export class VNPayService {
   private config: VNPayConfig;
@@ -306,6 +307,49 @@ export class VNPayService {
             paymentStatus: PaymentStatus.PAID,
             paidAt: new Date(),
           });
+
+          // tao cashback neu co the
+          const order = await uow.orders.findById(payment.orderId, {
+            user: true,
+          });
+          if (order?.userId) {
+            const user = await uow.users.findById(order.userId);
+            if (user?.walletAddress) {
+              const existingCashback = await uow.cashbacks.findByPaymentId(
+                payment.id
+              );
+              if (!existingCashback) {
+                const cashbackPercentage = 1; // 1%
+                // const cashbackAmount = (Number(payment.amount) * cashbackPercentage) / 100;
+                const cashbackAmount = Number(payment.amount);
+                const eligibleAt = new Date(
+                  Date.now() - 7 * 24 * 60 * 60 * 1000
+                );
+                const expiresAt = new Date(
+                  Date.now() + 90 * 24 * 60 * 60 * 1000
+                );
+
+                await uow.cashbacks.create({
+                  payment: { connect: { id: payment.id } },
+                  user: { connect: { id: order.userId } },
+                  order: { connect: { id: payment.orderId } },
+                  amount: cashbackAmount,
+                  percentage: cashbackPercentage,
+                  currency: payment.currency,
+                  walletAddress: user.walletAddress,
+                  blockchainNetwork: user.preferredNetwork || 'BSC',
+                  status: 'PENDING',
+                  eligibleAt,
+                  expiresAt,
+                  updatedAt: new Date(),
+                  metadata: {
+                    orderNumber: order.orderNumber,
+                    createdBy: 'payment_update',
+                  },
+                });
+              }
+            }
+          }
         });
 
         return {
