@@ -10,6 +10,7 @@ import adminRoutes from './admin.routes';
 import categoryRoutes from './category.route';
 import paymentRoutes from './payment.routes';
 import chatRoutes from './chat.route';
+import voucherRoutes from './voucher.routes';
 
 const router = Router();
 
@@ -42,5 +43,6 @@ router.use('/api/admin', adminRoutes);
 router.use('/api/categories', categoryRoutes);
 router.use('/api/payments', paymentRoutes);
 router.use('/api/chat', chatRoutes);
+router.use('/api/vouchers', voucherRoutes);
 
 export default router;

@@ -252,8 +252,8 @@ model User {
 
   // relation
   shop Shop? @relation("ShopOwner")
-  cart          Cart?  
-  approvedShops Shop[]     @relation("ShopApprover") 
+  cart          Cart?
+  approvedShops Shop[]     @relation("ShopApprover")
   reviewedKycs  KycData[]  @relation("KycReviewer")
   kycData       KycData[]
   roles     UserRole[]
@@ -263,6 +263,7 @@ model User {
   cashbacks     Cashback[]
   conversationParticipants ConversationParticipant[]
   messages      Message[]
+  voucherUsages VoucherUsage[]
 
   @@map("users")
   @@index([email])
@@ -373,6 +374,7 @@ model Shop {
   kycData  KycData[]  @relation("ShopKyc")
   orders   Order[]
   conversations Conversation[]
+  vouchers Voucher[]
   
   @@map("shops")
   @@unique([bankName, bankAccountNumber])
@@ -843,6 +845,20 @@ enum ShippingMethod {
   SAME_DAY
 }
 
+// Voucher enums
+enum VoucherType {
+  PERCENTAGE    // Giảm theo phần trăm (VD: 10%)
+  FIXED_AMOUNT  // Giảm số tiền cố định (VD: 50,000 VND)
+  FREE_SHIPPING // Miễn phí vận chuyển
+}
+
+enum VoucherStatus {
+  ACTIVE        // Đang hoạt động
+  INACTIVE      // Tạm ngưng
+  EXPIRED       // Hết hạn
+  DEPLETED      // Đã hết lượt sử dụng
+}
+
 model Order{
   id              String        @id @default(uuid())
   orderNumber     String        @unique @map("order_number") // Mã đơn hàng
@@ -858,6 +874,10 @@ model Order{
   shippingFee     Decimal       @default(0) @map("shipping_fee") @db.Decimal(10,2)
   discount        Decimal       @default(0) @db.Decimal(10,2)
   totalAmount     Decimal       @map("total_amount") @db.Decimal(15,2)
+
+  // Voucher
+  voucherId       String?       @map("voucher_id")
+  voucherCode     String?       @map("voucher_code") // Lưu lại mã voucher đã dùng
 
   // Thông tin giao hàng
   shippingMethod  ShippingMethod @map("shipping_method")
@@ -892,8 +912,10 @@ model Order{
   shop            Shop          @relation(fields: [shopId], references: [id])
   items           OrderItem[]
   statusHistory   OrderStatusHistory[]
-  payments        Payment[]   // 👈 Thêm dòng này
+  payments        Payment[]
   cashbacks       Cashback[]
+  voucher         Voucher?      @relation(fields: [voucherId], references: [id])
+  voucherUsages   VoucherUsage[]
 
   @@map("orders")
   @@index([orderNumber])
@@ -901,6 +923,7 @@ model Order{
   @@index([shopId])
   @@index([status])
   @@index([paymentStatus])
+  @@index([voucherId])
   @@index([createdAt])
 }
 
@@ -1471,4 +1494,83 @@ model Message {
   @@index([sentAt])
   @@index([createdAt])
   @@index([deletedAt])
+}
+
+// Voucher Management
+model Voucher {
+  id              String        @id @default(uuid())
+  code            String        @unique // Mã voucher (VD: SUMMER2024)
+  name            String        // Tên voucher
+  description     String?       @db.Text
+
+  // Loại và giá trị giảm
+  type            VoucherType
+  discountValue   Decimal       @map("discount_value") @db.Decimal(15,2) // Giá trị (% hoặc số tiền)
+  maxDiscount     Decimal?      @map("max_discount") @db.Decimal(15,2) // Giảm tối đa (cho PERCENTAGE)
+
+  // Điều kiện áp dụng
+  minOrderValue   Decimal?      @map("min_order_value") @db.Decimal(15,2) // Giá trị đơn hàng tối thiểu
+
+  // Shop (nếu là voucher của shop, null = voucher hệ thống)
+  shopId          String?       @map("shop_id")
+
+  // Số lượng và giới hạn
+  totalLimit      Int?          @map("total_limit") // Tổng số lượt sử dụng (null = unlimited)
+  usedCount       Int           @default(0) @map("used_count") // Đã sử dụng
+  limitPerUser    Int?          @map("limit_per_user") // Giới hạn mỗi user (null = unlimited)
+
+  // Thời gian hiệu lực
+  startDate       DateTime      @map("start_date")
+  endDate         DateTime      @map("end_date")
+
+  // Trạng thái
+  status          VoucherStatus @default(ACTIVE)
+  isPublic        Boolean       @default(true) @map("is_public") // Public hay private
+
+  // Auditable fields
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  createdBy       String?       @map("created_by")
+  updatedBy       String?       @map("updated_by")
+
+  // Soft delete
+  deletedAt       DateTime?     @map("deleted_at")
+  deletedBy       String?       @map("deleted_by")
+
+  // Relations
+  shop            Shop?         @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  usages          VoucherUsage[]
+  orders          Order[]
+
+  @@map("vouchers")
+  @@index([code])
+  @@index([shopId])
+  @@index([status])
+  @@index([startDate])
+  @@index([endDate])
+  @@index([createdAt])
+  @@index([deletedAt])
+}
+
+// Lịch sử sử dụng voucher
+model VoucherUsage {
+  id              String    @id @default(uuid())
+  voucherId       String    @map("voucher_id")
+  userId          String    @map("user_id")
+  orderId         String?   @map("order_id") // Null nếu order bị hủy
+
+  discountAmount  Decimal   @map("discount_amount") @db.Decimal(15,2) // Số tiền đã giảm
+
+  usedAt          DateTime  @default(now()) @map("used_at")
+
+  // Relations
+  voucher         Voucher   @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [userId], references: [id])
+  order           Order?    @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@map("voucher_usages")
+  @@index([voucherId])
+  @@index([userId])
+  @@index([orderId])
+  @@index([usedAt])
 }

@@ -22,12 +22,17 @@ import redis from '../config/redis';
 import { CacheUtil } from '../utils/cache.util';
 import { filter } from 'compression';
 import { Web3CashbackService } from './web3Cashback.service';
+import { VoucherService } from './voucher.service';
+import { VoucherType } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/library';
 
 export class OrderService {
   private web3CashbackService: Web3CashbackService;
+  private voucherService: VoucherService;
 
   constructor(private uow: IUnitOfWork) {
     this.web3CashbackService = new Web3CashbackService(uow);
+    this.voucherService = new VoucherService(uow);
   }
 
   // /**
@@ -265,9 +270,44 @@ export class OrderService {
         });
       }
 
+      // Xử lý voucher nếu có
+      let discountAmount = input.discount ?? 0;
+      let voucherId: string | undefined;
+      let voucherCode: string | undefined;
+      let shippingFee = input.shippingFee ?? 0;
+
+      if (input.voucherCode) {
+        const voucherResult = await this.voucherService.validateAndApplyVoucher({
+          code: input.voucherCode,
+          userId,
+          shopId: shopId!,
+          subtotal: subTotal,
+        });
+
+        if (!voucherResult.isValid) {
+          throw new ValidationError(
+            voucherResult.error || 'Voucher không hợp lệ'
+          );
+        }
+
+        // Lấy voucher để check type
+        const voucher = await uow.vouchers.findById(voucherResult.voucherId!);
+        if (voucher) {
+          if (voucher.type === VoucherType.FREE_SHIPPING) {
+            // Miễn phí vận chuyển
+            shippingFee = 0;
+          } else {
+            // Giảm giá theo số tiền hoặc %
+            discountAmount = voucherResult.discountAmount;
+          }
+
+          voucherId = voucher.id;
+          voucherCode = voucher.code;
+        }
+      }
+
       // tính tổng đơn hàng
-      const totalAmount =
-        subTotal + (input.shippingFee ?? 0) - (input.discount ?? 0);
+      const totalAmount = subTotal + shippingFee - discountAmount;
       const orderNumber = await this.generateOrderNumber();
 
       // tạo đơn hàng
@@ -278,15 +318,22 @@ export class OrderService {
         status: OrderStatus.PENDING,
         paymentStatus: PaymentStatus.PENDING,
         subtotal: subTotal,
-        shippingFee: input.shippingFee ?? 0,
-        discount: input.discount ?? 0,
+        shippingFee: shippingFee,
+        discount: discountAmount,
         totalAmount,
-        ...input,
+        voucherId: voucherId,
+        voucherCode: voucherCode,
+        shippingMethod: input.shippingMethod,
+        shippingAddress: input.shippingAddress,
+        recipientName: input.recipientName,
+        recipientPhone: input.recipientPhone,
+        paymentMethod: input.paymentMethod,
+        customerNote: input.customerNote,
         createdBy: userId,
       });
 
       // chạy song song các thao tác tạo order items, cập nhật tồn kho, tạo payment, xóa cart items
-      await Promise.all([
+      const promises = [
         uow.orderItems.createMany(
           orderItemsData.map((item) => ({ ...item, orderId: order.id }))
         ),
@@ -294,8 +341,22 @@ export class OrderService {
         this.createPaymentForOrder(uow, order, input.paymentMethod),
         uow.cartItem.deleteByCartId(cart.id),
         redis.del(CacheUtil.cartByUserId(userId)), // xóa cache giỏ hàng
-        redis.del(CacheUtil.cartByUserId(userId)),
-      ]);
+      ];
+
+      // Nếu có voucher, tăng usedCount và tạo VoucherUsage
+      if (voucherId) {
+        promises.push(
+          uow.vouchers.incrementUsedCount(voucherId),
+          uow.voucherUsages.create({
+            voucher: { connect: { id: voucherId } },
+            user: { connect: { id: userId } },
+            order: { connect: { id: order.id } },
+            discountAmount: new Decimal(discountAmount),
+          })
+        );
+      }
+
+      await Promise.all(promises);
 
       // cache
       this.invalidateOrderCache(userId, shopId!).catch(console.error);
