@@ -18,6 +18,7 @@ import { CategoryService } from '../services/category.service';
 import { ConversationService } from '../services/conversation.service';
 import { MessageService } from '../services/message.service';
 import { VNPayService } from '../services/vnpay.service';
+import { VoucherService } from '../services/voucher.service';
 
 const unitOfWork = new UnitOfWork(prisma);
 export const uow = unitOfWork;
@@ -39,3 +40,4 @@ export const categoryService = new CategoryService(unitOfWork);
 export const conversationService = new ConversationService(unitOfWork);
 export const messageService = new MessageService(unitOfWork);
 export const vnpayService = new VNPayService(unitOfWork);
+export const voucherService = new VoucherService(unitOfWork);

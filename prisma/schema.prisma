@@ -7,39 +7,39 @@ datasource db {
 }
 
 // role management
-enum RoleType{
-  SYSTEM_ADMIN     // Quản trị viên hệ thống
-  SELLER       
-  CUSTOMER 
-  GUEST        
-  KYC_REVIEWER     // Người duyệt KYC
+enum RoleType {
+  SYSTEM_ADMIN // Quản trị viên hệ thống
+  SELLER
+  CUSTOMER
+  GUEST
+  KYC_REVIEWER // Người duyệt KYC
 }
 
-model Role{
+model Role {
   id          String   @id @default(uuid())
   name        String   @unique
-  type        RoleType  @unique
+  type        RoleType @unique
   description String?
   isActive    Boolean  @default(true) @map("is_active")
-  
+
   // Auditable fields
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
-  createdBy   String?    @map("created_by")
-  updatedBy   String?    @map("updated_by")
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
   // Soft delete fields
-  deletedAt   DateTime?  @map("deleted_at")
-  deletedBy   String?    @map("deleted_by")
+  deletedAt DateTime? @map("deleted_at")
+  deletedBy String?   @map("deleted_by")
 
   userRoles       UserRole[]
   rolePermissions RolePermission[]
 
-  @@map("roles")
   @@index([type])
   @@index([isActive])
   @@index([createdAt])
   @@index([deletedAt])
+  @@map("roles")
 }
 
 enum PermissionModule {
@@ -73,124 +73,125 @@ model Permission {
   action      PermissionAction
   description String?
   isActive    Boolean          @default(true) @map("is_active")
-  
+
   // Auditable fields
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
-  createdBy   String?    @map("created_by")
-  updatedBy   String?    @map("updated_by")
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
   // Soft delete fields
-  deletedAt   DateTime?  @map("deleted_at")
-  deletedBy   String?    @map("deleted_by")
+  deletedAt DateTime? @map("deleted_at")
+  deletedBy String?   @map("deleted_by")
 
   // Relations
   rolePermissions RolePermission[]
   userPermissions UserPermission[]
 
   @@unique([module, action])
-  @@map("permissions")
   @@index([module])
   @@index([action])
   @@index([isActive])
   @@index([createdAt])
   @@index([deletedAt])
+  @@map("permissions")
 }
 
 model RolePermission {
   id           String @id @default(uuid())
   roleId       String @map("role_id")
   permissionId String @map("permission_id")
-  
+
   // Auditable fields
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
-  createdBy   String?    @map("created_by")
-  updatedBy   String?    @map("updated_by")
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
   // Relations
   role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
   permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
   @@unique([roleId, permissionId])
-  @@map("role_permissions")
   @@index([roleId])
   @@index([permissionId])
   @@index([createdAt])
+  @@map("role_permissions")
 }
 
 model UserRole {
-  id        String        @id @default(uuid())
-  userId    String        @map("user_id")
-  roleId    String        @map("role_id")
-  isActive  Boolean       @default(true) @map("is_active")
-  expiresAt DateTime?     @map("expires_at") // Role có thể có thời hạn
-  
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  roleId    String    @map("role_id")
+  isActive  Boolean   @default(true) @map("is_active")
+  expiresAt DateTime? @map("expires_at") // Role có thể có thời hạn
+
   // Auditable fields
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
-  createdBy   String?    @map("created_by")
-  updatedBy   String?    @map("updated_by")
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
   // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role          Role           @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  voucherUsages VoucherUsage[]
 
   @@unique([userId, roleId])
-  @@map("user_roles")
   @@index([userId])
   @@index([roleId])
   @@index([isActive])
   @@index([expiresAt])
   @@index([createdAt])
+  @@map("user_roles")
 }
 
 model UserPermission {
-  id           String  @id @default(uuid())
-  userId       String  @map("user_id")
-  permissionId String  @map("permission_id")
-  isGranted    Boolean @default(true) @map("is_granted") // true = grant, false = deny
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
+  permissionId String    @map("permission_id")
+  isGranted    Boolean   @default(true) @map("is_granted") // true = grant, false = deny
   expiresAt    DateTime? @map("expires_at")
-  
+
   // Auditable fields
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
-  createdBy   String?    @map("created_by")
-  updatedBy   String?    @map("updated_by")
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
   // Relations
   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
   @@unique([userId, permissionId])
-  @@map("user_permissions")
   @@index([userId])
   @@index([permissionId])
   @@index([isGranted])
   @@index([expiresAt])
   @@index([createdAt])
+  @@map("user_permissions")
 }
 
 model UserActivity {
   id          String   @id @default(uuid())
   userId      String   @map("user_id")
-  action      String   // CREATE_PRODUCT, UPDATE_SHOP, DELETE_USER, etc.
-  module      String   // PRODUCT, SHOP, USER, etc.
+  action      String // CREATE_PRODUCT, UPDATE_SHOP, DELETE_USER, etc.
+  module      String // PRODUCT, SHOP, USER, etc.
   resourceId  String?  @map("resource_id") // ID của tài nguyên bị tác động
   ipAddress   String?  @map("ip_address")
   userAgent   String?  @map("user_agent")
-  metadata    Json?    // Thông tin bổ sung
+  metadata    Json? // Thông tin bổ sung
   performedAt DateTime @default(now()) @map("performed_at")
-  
-  // Relations
-  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@map("user_activities")
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([action])
   @@index([module])
   @@index([resourceId])
   @@index([performedAt])
+  @@map("user_activities")
 }
 
 // User management
@@ -211,59 +212,59 @@ enum Gender {
 
 model User {
   // Primary fields
-  id          String     @id @default(uuid())
-  email       String     @unique
-  password    String
-  identityCard String?    @unique
-  
+  id           String  @id @default(uuid())
+  email        String  @unique
+  password     String
+  identityCard String? @unique
+
   // Personal information
-  firstName   String     @map("first_name")
-  lastName    String     @map("last_name")
-  phoneNumber String?    @map("phone_number") @unique
+  firstName   String    @map("first_name")
+  lastName    String    @map("last_name")
+  phoneNumber String?   @unique @map("phone_number")
   address     String?
   birthday    DateTime?
   gender      Gender?
-  avatarUrl   String?    @map("avatar_url")
-  
+  avatarUrl   String?   @map("avatar_url")
+
   // Status and verification
-  status        UserStatus @default(PENDING)
-  emailVerified Boolean    @default(false) @map("email_verified")
-  emailVerifiedAt DateTime? @map("email_verified_at")
-  
+  status          UserStatus @default(PENDING)
+  emailVerified   Boolean    @default(false) @map("email_verified")
+  emailVerifiedAt DateTime?  @map("email_verified_at")
+
   // Security fields
-  lastLoginAt   DateTime? @map("last_login_at")
-  passwordResetToken String? @map("password_reset_token")
+  lastLoginAt          DateTime? @map("last_login_at")
+  passwordResetToken   String?   @map("password_reset_token")
   passwordResetExpires DateTime? @map("password_reset_expires")
 
   // Blockchain wallet info
-  walletAddress       String?  @map("wallet_address")
-  preferredNetwork    String?  @default("BSC") @map("preferred_network") // BSC, ETH, POLYGON
-  
+  walletAddress    String? @map("wallet_address")
+  preferredNetwork String? @default("BSC") @map("preferred_network") // BSC, ETH, POLYGON
+
   // Auditable fields
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
-  createdBy   String?    @map("created_by")
-  updatedBy   String?    @map("updated_by")
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
   // Soft delete fields
-  deletedAt   DateTime?  @map("deleted_at")
-  deletedBy   String?    @map("deleted_by")
+  deletedAt DateTime? @map("deleted_at")
+  deletedBy String?   @map("deleted_by")
 
   // relation
-  shop Shop? @relation("ShopOwner")
-  cart          Cart?  
-  approvedShops Shop[]     @relation("ShopApprover") 
-  reviewedKycs  KycData[]  @relation("KycReviewer")
-  kycData       KycData[]
-  roles     UserRole[]
-  permissions UserPermission[]
-  activities    UserActivity[]
-  orders Order[]
-  cashbacks     Cashback[]
+  shop                     Shop?                     @relation("ShopOwner")
+  cart                     Cart?
+  approvedShops            Shop[]                    @relation("ShopApprover")
+  reviewedKycs             KycData[]                 @relation("KycReviewer")
+  kycData                  KycData[]
+  roles                    UserRole[]
+  permissions              UserPermission[]
+  activities               UserActivity[]
+  orders                   Order[]
+  cashbacks                Cashback[]
   conversationParticipants ConversationParticipant[]
-  messages      Message[]
+  messages                 Message[]
+  voucherUsages            VoucherUsage[]
 
-  @@map("users")
   @@index([email])
   @@index([status])
   @@index([emailVerified])
@@ -271,9 +272,10 @@ model User {
   @@index([deletedAt])
   @@index([phoneNumber])
   @@index([firstName, lastName])
+  @@map("users")
 }
 
-enum KycStatus{
+enum KycStatus {
   INCOMPLETE
   PENDING
   APPROVED
@@ -281,11 +283,11 @@ enum KycStatus{
   EXPIRED
 }
 
-enum DocumentType{
+enum DocumentType {
   IDENTITY_CARD
 }
 
-enum DocumentStatus{
+enum DocumentStatus {
   PENDING
   VERIFIED
   REJECTED
@@ -311,29 +313,29 @@ enum ApprovalStatus {
 
 model Shop {
   // Primary fields
-  id      String     @id @default(uuid())
-  ownerId String     @map("owner_id") @unique
-  name    String     @unique
-  status  ShopStatus @default(INACTIVE)
-  logoUrl         String?        @map("logo_url")
-  email   String?    @map("email") @unique
-  phoneNumber String? @map("phone_number") @unique
-  
+  id          String     @id @default(uuid())
+  ownerId     String     @unique @map("owner_id")
+  name        String     @unique
+  status      ShopStatus @default(INACTIVE)
+  logoUrl     String?    @map("logo_url")
+  email       String?    @unique @map("email")
+  phoneNumber String?    @unique @map("phone_number")
+
   // Address fields 
-  street      String?
-  ward        String?
-  district       String?
-  city  String?  
-  country     String @default("Việt Nam")
+  street   String?
+  ward     String?
+  district String?
+  city     String?
+  country  String  @default("Việt Nam")
 
   // Business config
-  category    String? // bán gì ? Quần áo, giày dép, công nghệ...
-  isVerified      Boolean        @default(false) @map("is_verified") // giống shopee mall á
-  verifiedAt      DateTime?      @map("verified_at")
+  category   String? // bán gì ? Quần áo, giày dép, công nghệ...
+  isVerified Boolean   @default(false) @map("is_verified") // giống shopee mall á
+  verifiedAt DateTime? @map("verified_at")
 
   //operation
-  autoApprove     Boolean        @default(false) @map("auto_approve") // tu xac nhan don hang
-  
+  autoApprove Boolean @default(false) @map("auto_approve") // tu xac nhan don hang
+
   // Approval
   approvalStatus  ApprovalStatus @default(PENDING_APPROVAL) @map("approval_status")
   approvedBy      String?        @map("approved_by")
@@ -341,40 +343,39 @@ model Shop {
   rejectionReason String?        @map("rejection_reason")
 
   // bank
-  bankName        String?        @map("bank_name")
-  bankAccount     String?        @map("bank_account")
-  bankAccountNumber String?      @map("bank_account_number")
+  bankName          String? @map("bank_name")
+  bankAccount       String? @map("bank_account")
+  bankAccountNumber String? @map("bank_account_number")
 
   // statistic
-  totalRevenue    Decimal        @default(0) @map("total_revenue") @db.Decimal(15,2)
-  totalOrders     Int            @default(0) @map("total_orders")
-  rating          Decimal?       @db.Decimal(3,2) // trung bình từ sp trong shop
-  reviewCount     Int            @default(0) @map("review_count")
+  totalRevenue Decimal  @default(0) @map("total_revenue") @db.Decimal(15, 2)
+  totalOrders  Int      @default(0) @map("total_orders")
+  rating       Decimal? @db.Decimal(3, 2) // trung bình từ sp trong shop
+  reviewCount  Int      @default(0) @map("review_count")
 
   // Auditable fields
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
-  createdBy   String?    @map("created_by") 
-  updatedBy   String?    @map("updated_by") 
-  
-  // Soft delete fields
-  deletedAt   DateTime?  @map("deleted_at")
-  deletedBy   String?    @map("deleted_by") 
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
 
-  approver        User?          @relation("ShopApprover", fields: [approvedBy], references: [id])
-  
-  currentKycId    String?        @unique @map("current_kyc_id")
-  currentKyc      KycData?       @relation("CurrentKyc", fields: [currentKycId], references: [id])
+  // Soft delete fields
+  deletedAt DateTime? @map("deleted_at")
+  deletedBy String?   @map("deleted_by")
+
+  approver User? @relation("ShopApprover", fields: [approvedBy], references: [id])
+
+  currentKycId String?  @unique @map("current_kyc_id")
+  currentKyc   KycData? @relation("CurrentKyc", fields: [currentKycId], references: [id])
 
   // Relations
-  owner    User       @relation("ShopOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  products Product[] // 1 shop có nhiều products
-  kycData  KycData[]  @relation("ShopKyc")
-  orders   Order[]
+  owner         User           @relation("ShopOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  products      Product[] // 1 shop có nhiều products
+  kycData       KycData[]      @relation("ShopKyc")
+  orders        Order[]
   conversations Conversation[]
-  vouchers        Voucher[]
-  
-  @@map("shops")
+  vouchers      Voucher[]
+
   @@unique([bankName, bankAccountNumber])
   @@index([ownerId])
   @@index([status])
@@ -382,33 +383,34 @@ model Shop {
   @@index([city])
   @@index([createdAt])
   @@index([deletedAt])
+  @@map("shops")
 }
 
-model KycData{
-  id                String    @id @default(uuid())
-  status            KycStatus @default(INCOMPLETE)
-  submittedAt       DateTime?
-  reviewedAt        DateTime?
-  approvedAt        DateTime?
-  rejectedAt        DateTime?
-  reviewerNote      String?
-  expiryDate        DateTime? // Ngày hết hạn KYC
+model KycData {
+  id           String    @id @default(uuid())
+  status       KycStatus @default(INCOMPLETE)
+  submittedAt  DateTime?
+  reviewedAt   DateTime?
+  approvedAt   DateTime?
+  rejectedAt   DateTime?
+  reviewerNote String?
+  expiryDate   DateTime? // Ngày hết hạn KYC
 
   // nguoi gui
-  fullName          String?
-  birthday          DateTime?
-  personalAddress   String?
-  personalPhone     String?
-  personalEmail     String?
-  identityCard      String? // Số CMND/CCCD
+  fullName        String?
+  birthday        DateTime?
+  personalAddress String?
+  personalPhone   String?
+  personalEmail   String?
+  identityCard    String? // Số CMND/CCCD
 
   // shop
-  shopName      String?
-  taxCode       String?
-  shopAddress   String?
-  shopPhone     String?
-  shopEmail     String?
-  shopRegDate   DateTime? // Ngày đăng ký kinh doanh
+  shopName    String?
+  taxCode     String?
+  shopAddress String?
+  shopPhone   String?
+  shopEmail   String?
+  shopRegDate DateTime? // Ngày đăng ký kinh doanh
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -416,19 +418,19 @@ model KycData{
   userId String
   shopId String
 
-  user      User          @relation(fields: [userId], references: [id])
-  shop      Shop          @relation("ShopKyc", fields: [shopId], references: [id])
-  currentShop Shop?       @relation("CurrentKyc")
-  reviewerUserId String?   @map("reviewer_user_id")
-  reviewer       User?     @relation("KycReviewer", fields: [reviewerUserId], references: [id])
-  documents KycDocument[]
-  history   KycHistory[]
+  user           User          @relation(fields: [userId], references: [id])
+  shop           Shop          @relation("ShopKyc", fields: [shopId], references: [id])
+  currentShop    Shop?         @relation("CurrentKyc")
+  reviewerUserId String?       @map("reviewer_user_id")
+  reviewer       User?         @relation("KycReviewer", fields: [reviewerUserId], references: [id])
+  documents      KycDocument[]
+  history        KycHistory[]
 
   @@unique([shopId])
   @@map("kyc_data")
 }
 
-model KycDocument{
+model KycDocument {
   id           String         @id @default(uuid())
   type         DocumentType
   status       DocumentStatus @default(PENDING)
@@ -439,8 +441,8 @@ model KycDocument{
   uploadedAt   DateTime       @default(now())
   verifiedAt   DateTime?
   rejectedAt   DateTime?
-  verifierNote String?        // Ghi chú của người xác minh
-  
+  verifierNote String? // Ghi chú của người xác minh
+
   // Foreign key
   kycDataId String
 
@@ -451,14 +453,14 @@ model KycDocument{
 }
 
 model KycHistory {
-  id          String    @id @default(uuid())
-  action      String    // CREATE, UPDATE, APPROVE, REJECT, etc.
+  id          String     @id @default(uuid())
+  action      String // CREATE, UPDATE, APPROVE, REJECT, etc.
   oldStatus   KycStatus?
   newStatus   KycStatus?
   reason      String?
-  performedBy String?   // ID của người thực hiện
-  performedAt DateTime  @default(now())
-  metadata    Json?     // Thông tin bổ sung dạng JSON
+  performedBy String? // ID của người thực hiện
+  performedAt DateTime   @default(now())
+  metadata    Json? // Thông tin bổ sung dạng JSON
 
   kycDataId String
 
@@ -468,14 +470,14 @@ model KycHistory {
 }
 
 model KycSettings {
-  id                    String   @id @default(uuid())
-  requiredDocuments     String[] // Array of DocumentType
-  kycExpiryDays        Int      @default(365) // KYC hết hạn sau bao nhiêu ngày
-  autoApprovalEnabled  Boolean  @default(false)
-  maxFileSize          Int      @default(10485760) // 10MB in bytes
-  allowedMimeTypes     String[] // ["image/jpeg", "image/png", "application/pdf"]
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  id                  String   @id @default(uuid())
+  requiredDocuments   String[] // Array of DocumentType
+  kycExpiryDays       Int      @default(365) // KYC hết hạn sau bao nhiêu ngày
+  autoApprovalEnabled Boolean  @default(false)
+  maxFileSize         Int      @default(10485760) // 10MB in bytes
+  allowedMimeTypes    String[] // ["image/jpeg", "image/png", "application/pdf"]
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   @@map("kyc_settings")
 }
@@ -497,33 +499,33 @@ model Product {
   averageRating Float         @default(0) @map("average_rating")
   reviewCount   Int           @default(0) @map("review_count")
   status        ProductStatus @default(DRAFT)
-  
+
   // Auditable fields
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
-  createdBy   String?    @map("created_by") // User ID who created
-  updatedBy   String?    @map("updated_by") // User ID who last updated
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by") // User ID who created
+  updatedBy String?  @map("updated_by") // User ID who last updated
+
   // Soft delete fields
-  deletedAt   DateTime?  @map("deleted_at")
-  deletedBy   String?    @map("deleted_by") // User ID who deleted
-  
+  deletedAt DateTime? @map("deleted_at")
+  deletedBy String?   @map("deleted_by") // User ID who deleted
+
   // Product relations
-  shop     Shop              @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  variants ProductVariant[]
-  images   ProductImage[]
-  options  ProductOption[]
+  shop       Shop              @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  variants   ProductVariant[]
+  images     ProductImage[]
+  options    ProductOption[]
   categories ProductCategory[]
-  cartItems     CartItem[]
-  orderItems  OrderItem[]
-  
-  @@map("products")
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+
   @@index([shopId])
   @@index([status])
   @@index([name])
   @@index([averageRating])
   @@index([createdAt])
   @@index([deletedAt])
+  @@map("products")
 }
 
 model ProductVariant {
@@ -535,34 +537,34 @@ model ProductVariant {
   value       String
   price       Decimal       @db.Decimal(15, 2)
   currency    String        @default("VND") // For Money value object
-  status      ProductStatus @map("product_status") @default(DRAFT)
+  status      ProductStatus @default(DRAFT) @map("product_status")
   description String?
-  stock       Int           @default(0) 
-  
+  stock       Int           @default(0)
+
   // Auditable fields
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
-  createdBy   String?    @map("created_by") // User ID who created
-  updatedBy   String?    @map("updated_by") // User ID who last updated
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by") // User ID who created
+  updatedBy String?  @map("updated_by") // User ID who last updated
+
   // Soft delete fields
-  deletedAt   DateTime?  @map("deleted_at")
-  deletedBy   String?    @map("deleted_by") // User ID who deleted
-  
+  deletedAt DateTime? @map("deleted_at")
+  deletedBy String?   @map("deleted_by") // User ID who deleted
+
   // Product variant relations
   product      Product                     @relation(fields: [productId], references: [id], onDelete: Cascade)
   images       ProductImage[]
   optionValues ProductVariantOptionValue[]
-  cartItems     CartItem[]
-  orderItems  OrderItem[]
-  
-  @@map("product_variants")
+  cartItems    CartItem[]
+  orderItems   OrderItem[]
+
   @@index([productId])
   @@index([sku])
   @@index([status])
   @@index([price])
   @@index([createdAt])
   @@index([deletedAt])
+  @@map("product_variants")
 }
 
 model ProductImage {
@@ -574,28 +576,28 @@ model ProductImage {
   isPrimary   Boolean @default(false) @map("is_primary")
   sortOrder   Int     @default(0) @map("sort_order")
   description String?
-  
+
   // Auditable fields
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
-  createdBy   String?    @map("created_by") // User ID who created
-  updatedBy   String?    @map("updated_by") // User ID who last updated
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by") // User ID who created
+  updatedBy String?  @map("updated_by") // User ID who last updated
+
   // Soft delete fields
-  deletedAt   DateTime?  @map("deleted_at")
-  deletedBy   String?    @map("deleted_by") // User ID who deleted
-  
+  deletedAt DateTime? @map("deleted_at")
+  deletedBy String?   @map("deleted_by") // User ID who deleted
+
   // Product image relations
   product Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
   variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
-  
-  @@map("product_images")
+
   @@index([productId])
   @@index([variantId])
   @@index([isPrimary])
   @@index([sortOrder])
   @@index([createdAt])
   @@index([deletedAt])
+  @@map("product_images")
 }
 
 model ProductOption {
@@ -603,28 +605,28 @@ model ProductOption {
   id        String @id @default(uuid())
   productId String @map("product_id")
   name      String @db.Citext
-  
+
   // Auditable fields
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
-  createdBy   String?    @map("created_by") // User ID who created
-  updatedBy   String?    @map("updated_by") // User ID who last updated
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by") // User ID who created
+  updatedBy String?  @map("updated_by") // User ID who last updated
+
   // Soft delete fields
-  deletedAt   DateTime?  @map("deleted_at")
-  deletedBy   String?    @map("deleted_by") // User ID who deleted
-  
+  deletedAt DateTime? @map("deleted_at")
+  deletedBy String?   @map("deleted_by") // User ID who deleted
+
   // Product option relations
-  product                   Product                     @relation(fields: [productId], references: [id], onDelete: Cascade)
-  values                    ProductOptionValue[]
+  product                    Product                     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  values                     ProductOptionValue[]
   productVariantOptionValues ProductVariantOptionValue[]
-  
+
   @@unique([productId, name])
-  @@map("product_options")
   @@index([productId])
   @@index([name])
   @@index([createdAt])
   @@index([deletedAt])
+  @@map("product_options")
 }
 
 model ProductOptionValue {
@@ -633,28 +635,28 @@ model ProductOptionValue {
   productOptionId String @map("product_option_id")
   value           String @db.Citext
   sortOrder       Int    @default(0) @map("sort_order")
-  
+
   // Auditable fields
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
-  createdBy   String?    @map("created_by") // User ID who created
-  updatedBy   String?    @map("updated_by") // User ID who last updated
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by") // User ID who created
+  updatedBy String?  @map("updated_by") // User ID who last updated
+
   // Soft delete fields
-  deletedAt   DateTime?  @map("deleted_at")
-  deletedBy   String?    @map("deleted_by") // User ID who deleted
-  
+  deletedAt DateTime? @map("deleted_at")
+  deletedBy String?   @map("deleted_by") // User ID who deleted
+
   // Product option value relations
   productOption              ProductOption               @relation(fields: [productOptionId], references: [id], onDelete: Cascade)
   productVariantOptionValues ProductVariantOptionValue[]
-  
+
   @@unique([productOptionId, value])
-  @@map("product_option_values")
   @@index([productOptionId])
   @@index([sortOrder])
   @@index([value])
   @@index([createdAt])
   @@index([deletedAt])
+  @@map("product_option_values")
 }
 
 model ProductVariantOptionValue {
@@ -663,29 +665,29 @@ model ProductVariantOptionValue {
   productVariantId     String @map("product_variant_id")
   productOptionId      String @map("product_option_id")
   productOptionValueId String @map("product_option_value_id")
-  
+
   // Auditable fields
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
-  createdBy   String?    @map("created_by") // User ID who created
-  updatedBy   String?    @map("updated_by") // User ID who last updated
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by") // User ID who created
+  updatedBy String?  @map("updated_by") // User ID who last updated
+
   // Soft delete fields
-  deletedAt   DateTime?  @map("deleted_at")
-  deletedBy   String?    @map("deleted_by") // User ID who deleted
-  
+  deletedAt DateTime? @map("deleted_at")
+  deletedBy String?   @map("deleted_by") // User ID who deleted
+
   // Many-to-many relation fields
   productVariant     ProductVariant     @relation(fields: [productVariantId], references: [id], onDelete: Cascade)
   productOption      ProductOption      @relation(fields: [productOptionId], references: [id], onDelete: Cascade)
   productOptionValue ProductOptionValue @relation(fields: [productOptionValueId], references: [id], onDelete: Cascade)
-  
-  @@map("product_variant_option_values")
+
   @@unique([productVariantId, productOptionId])
   @@index([productVariantId])
   @@index([productOptionId])
   @@index([productOptionValueId])
   @@index([createdAt])
   @@index([deletedAt])
+  @@map("product_variant_option_values")
 }
 
 // Category Management
@@ -695,29 +697,29 @@ model Category {
   name             String
   description      String  @default("")
   parentCategoryId String? @map("parent_category_id")
-  
+
   // Auditable fields
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
-  createdBy   String?    @map("created_by") // User ID who created
-  updatedBy   String?    @map("updated_by") // User ID who last updated
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by") // User ID who created
+  updatedBy String?  @map("updated_by") // User ID who last updated
+
   // Soft delete fields
-  deletedAt   DateTime?  @map("deleted_at")
-  deletedBy   String?    @map("deleted_by") // User ID who deleted
-  
+  deletedAt DateTime? @map("deleted_at")
+  deletedBy String?   @map("deleted_by") // User ID who deleted
+
   // Self-referencing relations
-  parentCategory Category?  @relation("CategoryHierarchy", fields: [parentCategoryId], references: [id])
+  parentCategory  Category?  @relation("CategoryHierarchy", fields: [parentCategoryId], references: [id])
   childCategories Category[] @relation("CategoryHierarchy")
-  
+
   // Many-to-many relation with products
   products ProductCategory[]
-  
-  @@map("categories")
+
   @@index([name])
   @@index([parentCategoryId])
   @@index([createdAt])
   @@index([deletedAt])
+  @@map("categories")
 }
 
 // many to many product and category
@@ -726,108 +728,108 @@ model ProductCategory {
   id         String @id @default(uuid())
   productId  String @map("product_id")
   categoryId String @map("category_id")
-  
+
   // Auditable fields
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
-  createdBy   String?    @map("created_by") // User ID who created
-  updatedBy   String?    @map("updated_by") // User ID who last updated
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by") // User ID who created
+  updatedBy String?  @map("updated_by") // User ID who last updated
+
   // Soft delete fields
-  deletedAt   DateTime?  @map("deleted_at")
-  deletedBy   String?    @map("deleted_by") // User ID who deleted
-  
+  deletedAt DateTime? @map("deleted_at")
+  deletedBy String?   @map("deleted_by") // User ID who deleted
+
   // Relations
   product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  
-  @@map("product_categories")
+
   @@unique([productId, categoryId])
   @@index([productId])
   @@index([categoryId])
   @@index([createdAt])
   @@index([deletedAt])
+  @@map("product_categories")
 }
 
-model Cart{
-  id        String     @id @default(uuid())
-  userId    String?    @map("user_id") // null cho guest user
-  sessionId String?    @map("session_id") // Cho guest user
+model Cart {
+  id        String  @id @default(uuid())
+  userId    String? @map("user_id") // null cho guest user
+  sessionId String? @map("session_id") // Cho guest user
 
   // 
-  totalItems    Int     @default(0) @map("total_items")
-  totalAmount   Decimal @default(0) @map("total_amount") @db.Decimal(15,2)
-  currency      String  @default("VND")
+  totalItems  Int     @default(0) @map("total_items")
+  totalAmount Decimal @default(0) @map("total_amount") @db.Decimal(15, 2)
+  currency    String  @default("VND")
 
-  expiresAt     DateTime? @map("expires_at") // Thời gian hết hạn cho guest cart
-  lastActiveAt  DateTime  @default(now()) @map("last_active_at")
-  
+  expiresAt    DateTime? @map("expires_at") // Thời gian hết hạn cho guest cart
+  lastActiveAt DateTime  @default(now()) @map("last_active_at")
+
   // 
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   // 
-  user      User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items     CartItem[]
-  
-  @@map("carts")
-  @@unique([userId]) 
+  user  User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items CartItem[]
+
+  @@unique([userId])
   @@index([userId])
   @@index([sessionId])
   @@index([expiresAt])
   @@index([lastActiveAt])
+  @@map("carts")
 }
 
 model CartItem {
-  id               String  @id @default(uuid())
-  cartId           String  @map("cart_id")
-  productId        String  @map("product_id")
-  productVariantId String  @map("product_variant_id")
-  quantity         Int     @default(1)
-  
+  id               String @id @default(uuid())
+  cartId           String @map("cart_id")
+  productId        String @map("product_id")
+  productVariantId String @map("product_variant_id")
+  quantity         Int    @default(1)
+
   // Snapshot
-  unitPrice        Decimal @map("unit_price") @db.Decimal(15,2)
-  totalPrice       Decimal @map("total_price") @db.Decimal(15,2)
-  
+  unitPrice  Decimal @map("unit_price") @db.Decimal(15, 2)
+  totalPrice Decimal @map("total_price") @db.Decimal(15, 2)
+
   // snapshot (để hiển thị khi sản phẩm xóa)
-  productName      String  @map("product_name")
-  variantName      String? @map("variant_name")
-  productImageUrl  String? @map("product_image_url")
-  
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
-  
+  productName     String  @map("product_name")
+  variantName     String? @map("variant_name")
+  productImageUrl String? @map("product_image_url")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   // 
   cart           Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
   product        Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
   productVariant ProductVariant @relation(fields: [productVariantId], references: [id], onDelete: Cascade)
-  
-  @@map("cart_items")
+
   @@unique([cartId, productVariantId]) // Không cho trùng variant
   @@index([cartId])
   @@index([productId])
   @@index([productVariantId])
   @@index([createdAt])
+  @@map("cart_items")
 }
 
 //Order management
 
 enum OrderStatus {
-  PENDING           // Chờ xác nhận
-  CONFIRMED         // Đã xác nhận
-  PROCESSING        // Đang xử lý
-  SHIPPING          // Đang giao
-  DELIVERED         // Đã giao
-  COMPLETED         // Hoàn thành
-  CANCELLED         // Đã hủy
-  REFUNDED          // Đã hoàn tiền
+  PENDING // Chờ xác nhận
+  CONFIRMED // Đã xác nhận
+  PROCESSING // Đang xử lý
+  SHIPPING // Đang giao
+  DELIVERED // Đã giao
+  COMPLETED // Hoàn thành
+  CANCELLED // Đã hủy
+  REFUNDED // Đã hoàn tiền
 }
 
 enum PaymentMethod {
-  COD              // Thanh toán khi nhận hàng
-  BANK_TRANSFER    // Chuyển khoản
-  E_WALLET         // Ví điện tử
-  CREDIT_CARD      // Thẻ tín dụng
+  COD // Thanh toán khi nhận hàng
+  BANK_TRANSFER // Chuyển khoản
+  E_WALLET // Ví điện tử
+  CREDIT_CARD // Thẻ tín dụng
 }
 
 enum PaymentStatus {
@@ -843,163 +845,164 @@ enum ShippingMethod {
   SAME_DAY
 }
 
-model Order{
-  id              String        @id @default(uuid())
-  orderNumber     String        @unique @map("order_number") // Mã đơn hàng
-  userId          String        @map("user_id")
-  shopId          String        @map("shop_id")
+model Order {
+  id          String @id @default(uuid())
+  orderNumber String @unique @map("order_number") // Mã đơn hàng
+  userId      String @map("user_id")
+  shopId      String @map("shop_id")
 
   // Trạng thái
-  status          OrderStatus   @default(PENDING)
-  paymentStatus   PaymentStatus @default(PENDING) @map("payment_status")
+  status        OrderStatus   @default(PENDING)
+  paymentStatus PaymentStatus @default(PENDING) @map("payment_status")
 
   // Giá trị đơn hàng
-  subtotal        Decimal       @db.Decimal(15,2) // Tổng tiền hàng
-  shippingFee     Decimal       @default(0) @map("shipping_fee") @db.Decimal(10,2)
-  discount        Decimal       @default(0) @db.Decimal(10,2)
-  totalAmount     Decimal       @map("total_amount") @db.Decimal(15,2)
+  subtotal    Decimal @db.Decimal(15, 2) // Tổng tiền hàng
+  shippingFee Decimal @default(0) @map("shipping_fee") @db.Decimal(10, 2)
+  discount    Decimal @default(0) @db.Decimal(10, 2)
+  totalAmount Decimal @map("total_amount") @db.Decimal(15, 2)
 
   // Thông tin giao hàng
   shippingMethod  ShippingMethod @map("shipping_method")
-  shippingAddress String        @map("shipping_address")
-  recipientName   String        @map("recipient_name")
-  recipientPhone  String        @map("recipient_phone")
+  shippingAddress String         @map("shipping_address")
+  recipientName   String         @map("recipient_name")
+  recipientPhone  String         @map("recipient_phone")
 
   // Thanh toán
-  paymentMethod   PaymentMethod @map("payment_method")
-  paidAt          DateTime?     @map("paid_at")
-  
+  paymentMethod PaymentMethod @map("payment_method")
+  paidAt        DateTime?     @map("paid_at")
+
   // Ghi chú
-  customerNote    String?       @map("customer_note")
-  shopNote        String?       @map("shop_note")
-  cancelReason    String?       @map("cancel_reason")
+  customerNote String? @map("customer_note")
+  shopNote     String? @map("shop_note")
+  cancelReason String? @map("cancel_reason")
 
   // Thời gian
-  confirmedAt     DateTime?     @map("confirmed_at")
-  shippedAt       DateTime?     @map("shipped_at")
-  deliveredAt     DateTime?     @map("delivered_at")
-  completedAt     DateTime?     @map("completed_at")
-  cancelledAt     DateTime?     @map("cancelled_at")
-  
+  confirmedAt DateTime? @map("confirmed_at")
+  shippedAt   DateTime? @map("shipped_at")
+  deliveredAt DateTime? @map("delivered_at")
+  completedAt DateTime? @map("completed_at")
+  cancelledAt DateTime? @map("cancelled_at")
+
   // Auditable fields
-  createdAt       DateTime      @default(now()) @map("created_at")
-  updatedAt       DateTime      @updatedAt @map("updated_at")
-  createdBy       String?       @map("created_by")
-  updatedBy       String?       @map("updated_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
 
   // Voucher
-  voucherId       String?       @map("voucher_id")
-  
-  // Relations
-  user            User          @relation(fields: [userId], references: [id])
-  shop            Shop          @relation(fields: [shopId], references: [id])
-  items           OrderItem[]
-  statusHistory   OrderStatusHistory[]
-  payments        Payment[]   // 👈 Thêm dòng này
-  cashbacks       Cashback[]
-  voucher         Voucher?      @relation(fields: [voucherId], references: [id])
+  voucherId String? @map("voucher_id")
 
-  @@map("orders")
+  // Relations
+  user          User                 @relation(fields: [userId], references: [id])
+  shop          Shop                 @relation(fields: [shopId], references: [id])
+  items         OrderItem[]
+  statusHistory OrderStatusHistory[]
+  payments      Payment[] // 👈 Thêm dòng này
+  cashbacks     Cashback[]
+  voucher       Voucher?             @relation(fields: [voucherId], references: [id])
+  voucherUsages VoucherUsage[]
+
   @@index([orderNumber])
   @@index([userId])
   @@index([shopId])
   @@index([status])
   @@index([paymentStatus])
   @@index([createdAt])
+  @@map("orders")
 }
 
 model OrderItem {
-  id               String  @id @default(uuid())
-  orderId          String  @map("order_id")
-  productId        String  @map("product_id")
-  productVariantId String  @map("product_variant_id")
-  
-  quantity         Int
-  unitPrice        Decimal @map("unit_price") @db.Decimal(15,2)
-  totalPrice       Decimal @map("total_price") @db.Decimal(15,2)
-  
+  id               String @id @default(uuid())
+  orderId          String @map("order_id")
+  productId        String @map("product_id")
+  productVariantId String @map("product_variant_id")
+
+  quantity   Int
+  unitPrice  Decimal @map("unit_price") @db.Decimal(15, 2)
+  totalPrice Decimal @map("total_price") @db.Decimal(15, 2)
+
   // Snapshot để lưu thông tin sản phẩm tại thời điểm đặt
-  productName      String  @map("product_name")
-  variantName      String? @map("variant_name")
-  productImageUrl  String? @map("product_image_url")
-  sku              String?
-  
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
-  
-  order            Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product          Product        @relation(fields: [productId], references: [id])
-  productVariant   ProductVariant @relation(fields: [productVariantId], references: [id])
-  
-  @@map("order_items")
+  productName     String  @map("product_name")
+  variantName     String? @map("variant_name")
+  productImageUrl String? @map("product_image_url")
+  sku             String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  order          Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product        Product        @relation(fields: [productId], references: [id])
+  productVariant ProductVariant @relation(fields: [productVariantId], references: [id])
+
   @@index([orderId])
   @@index([productId])
   @@index([productVariantId])
+  @@map("order_items")
 }
 
 model OrderStatusHistory {
-  id          String      @id @default(uuid())
-  orderId     String      @map("order_id")
-  fromStatus  OrderStatus? @map("from_status")
-  toStatus    OrderStatus @map("to_status")
-  note        String?
-  changedBy   String?     @map("changed_by") // User ID
-  changedAt   DateTime    @default(now()) @map("changed_at")
-  
-  order       Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  
-  @@map("order_status_history")
+  id         String       @id @default(uuid())
+  orderId    String       @map("order_id")
+  fromStatus OrderStatus? @map("from_status")
+  toStatus   OrderStatus  @map("to_status")
+  note       String?
+  changedBy  String?      @map("changed_by") // User ID
+  changedAt  DateTime     @default(now()) @map("changed_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
   @@index([orderId])
   @@index([changedAt])
+  @@map("order_status_history")
 }
 
 // payment
 model Payment {
-  id              String        @id @default(uuid())
-  orderId         String        @map("order_id")
-  
+  id      String @id @default(uuid())
+  orderId String @map("order_id")
+
   // Thông tin thanh toán
-  amount          Decimal       @db.Decimal(15,2)
-  currency        String        @default("VND")
-  method          PaymentMethod
-  status          PaymentStatus @default(PENDING)
-  
+  amount   Decimal       @db.Decimal(15, 2)
+  currency String        @default("VND")
+  method   PaymentMethod
+  status   PaymentStatus @default(PENDING)
+
   // Thông tin giao dịch với payment gateway
-  transactionId   String?       @unique @map("transaction_id") // ID từ payment gateway
-  gatewayResponse Json?         @map("gateway_response") // Response từ gateway
-  
+  transactionId   String? @unique @map("transaction_id") // ID từ payment gateway
+  gatewayResponse Json?   @map("gateway_response") // Response từ gateway
+
   // Thời gian
-  paidAt          DateTime?     @map("paid_at")
-  expiredAt       DateTime?     @map("expired_at")
-  failedAt        DateTime?     @map("failed_at")
-  
+  paidAt    DateTime? @map("paid_at")
+  expiredAt DateTime? @map("expired_at")
+  failedAt  DateTime? @map("failed_at")
+
   // Ghi chú
-  failureReason   String?       @map("failure_reason")
-  note            String?
-  
+  failureReason String? @map("failure_reason")
+  note          String?
+
   // Auditable
-  createdAt       DateTime      @default(now()) @map("created_at")
-  updatedAt       DateTime      @updatedAt @map("updated_at")
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   // Relations
-  order           Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  cashback        Cashback?     // 1-1 relation với cashback
-  
-  @@map("payments")
+  order    Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  cashback Cashback? // 1-1 relation với cashback
+
   @@index([orderId])
   @@index([transactionId])
   @@index([status])
   @@index([method])
   @@index([createdAt])
+  @@map("payments")
 }
 
 //cash back
 enum CashbackStatus {
-  PENDING       // Chờ xử lý
-  PROCESSING    // Đang gửi lên blockchain
-  COMPLETED     // Đã hoàn thành
-  FAILED        // Thất bại
-  CANCELLED     // Đã hủy
+  PENDING // Chờ xử lý
+  PROCESSING // Đang gửi lên blockchain
+  COMPLETED // Đã hoàn thành
+  FAILED // Thất bại
+  CANCELLED // Đã hủy
 }
 
 // Blockchain enums
@@ -1026,51 +1029,50 @@ enum BlockchainTransactionStatus {
 }
 
 model Cashback {
-  id              String         @id @default(uuid())
-  paymentId       String         @unique @map("payment_id")
-  userId          String         @map("user_id")
-  orderId         String         @map("order_id")
-  
+  id        String @id @default(uuid())
+  paymentId String @unique @map("payment_id")
+  userId    String @map("user_id")
+  orderId   String @map("order_id")
+
   // Thông tin cashback
-  amount          Decimal        @db.Decimal(15,2)
-  percentage      Decimal        @db.Decimal(5,2) // VD: 5.00 = 5%
-  currency        String         @default("VND")
-  status          CashbackStatus @default(PENDING)
-  
+  amount     Decimal        @db.Decimal(15, 2)
+  percentage Decimal        @db.Decimal(5, 2) // VD: 5.00 = 5%
+  currency   String         @default("VND")
+  status     CashbackStatus @default(PENDING)
+
   // Blockchain info
-  blockchainNetwork   String?    @map("blockchain_network") // ETH, BSC, Polygon, etc.
-  walletAddress       String     @map("wallet_address") // Địa chỉ ví nhận cashback
-  txHash              String?    @unique @map("tx_hash") // Transaction hash
-  blockNumber         Int?       @map("block_number")
-  gasUsed             String?    @map("gas_used")
-  gasFee              Decimal?   @map("gas_fee") @db.Decimal(15,8)
-  
+  blockchainNetwork String?  @map("blockchain_network") // ETH, BSC, Polygon, etc.
+  walletAddress     String   @map("wallet_address") // Địa chỉ ví nhận cashback
+  txHash            String?  @unique @map("tx_hash") // Transaction hash
+  blockNumber       Int?     @map("block_number")
+  gasUsed           String?  @map("gas_used")
+  gasFee            Decimal? @map("gas_fee") @db.Decimal(15, 8)
+
   // Thời gian
-  eligibleAt      DateTime?      @map("eligible_at") // Thời điểm đủ điều kiện nhận
-  processedAt     DateTime?      @map("processed_at")
-  completedAt     DateTime?      @map("completed_at")
-  failedAt        DateTime?      @map("failed_at")
-  expiresAt       DateTime?      @map("expires_at") // Hết hạn claim
-  
+  eligibleAt  DateTime? @map("eligible_at") // Thời điểm đủ điều kiện nhận
+  processedAt DateTime? @map("processed_at")
+  completedAt DateTime? @map("completed_at")
+  failedAt    DateTime? @map("failed_at")
+  expiresAt   DateTime? @map("expires_at") // Hết hạn claim
+
   // Xử lý lỗi
-  failureReason   String?        @map("failure_reason")
-  retryCount      Int            @default(0) @map("retry_count")
-  lastRetryAt     DateTime?      @map("last_retry_at")
-  
+  failureReason String?   @map("failure_reason")
+  retryCount    Int       @default(0) @map("retry_count")
+  lastRetryAt   DateTime? @map("last_retry_at")
+
   // Metadata
-  metadata        Json?          // Thông tin bổ sung
-  note            String?
-  
+  metadata Json? // Thông tin bổ sung
+  note     String?
+
   // Auditable
-  createdAt       DateTime       @default(now()) @map("created_at")
-  updatedAt       DateTime       @updatedAt @map("updated_at")
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   // Relations
-  payment         Payment        @relation(fields: [paymentId], references: [id], onDelete: Cascade)
-  user            User           @relation(fields: [userId], references: [id])
-  order           Order          @relation(fields: [orderId], references: [id])
-  
-  @@map("cashbacks")
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+  order   Order   @relation(fields: [orderId], references: [id])
+
   @@index([paymentId])
   @@index([userId])
   @@index([orderId])
@@ -1080,131 +1082,131 @@ model Cashback {
   @@index([blockchainNetwork])
   @@index([eligibleAt])
   @@index([createdAt])
+  @@map("cashbacks")
 }
 
 // Blockchain Integration Models
 
 // Blockchain Network Configuration
 model BlockchainNetwork {
-  id              String                  @id @default(uuid())
-  name            String                  @unique
-  type            BlockchainNetworkType
-  rpcUrl          String                  @map("rpc_url")
-  chainId         BigInt                  @map("chain_id")
-  nativeToken     String                  @map("native_token") // ETH, BNB, MATIC
-  explorerUrl     String?                 @map("explorer_url")
-  isActive        Boolean                 @default(true) @map("is_active")
+  id          String                @id @default(uuid())
+  name        String                @unique
+  type        BlockchainNetworkType
+  rpcUrl      String                @map("rpc_url")
+  chainId     BigInt                @map("chain_id")
+  nativeToken String                @map("native_token") // ETH, BNB, MATIC
+  explorerUrl String?               @map("explorer_url")
+  isActive    Boolean               @default(true) @map("is_active")
 
   // Network specific settings
-  gasLimit        BigInt?                 @map("gas_limit")
-  gasPrice        BigInt?                 @map("gas_price")
-  maxFeePerGas    BigInt?                 @map("max_fee_per_gas")
+  gasLimit     BigInt? @map("gas_limit")
+  gasPrice     BigInt? @map("gas_price")
+  maxFeePerGas BigInt? @map("max_fee_per_gas")
 
   // Auditable fields
-  createdAt       DateTime                @default(now()) @map("created_at")
-  updatedAt       DateTime                @updatedAt @map("updated_at")
-  createdBy       String?                 @map("created_by")
-  updatedBy       String?                 @map("updated_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
 
   // Relations
-  contracts       SmartContract[]
-  transactions    BlockchainTransaction[]
-  events          BlockchainEvent[]
+  contracts    SmartContract[]
+  transactions BlockchainTransaction[]
+  events       BlockchainEvent[]
 
-  @@map("blockchain_networks")
   @@index([type])
   @@index([chainId])
   @@index([isActive])
   @@index([createdAt])
+  @@map("blockchain_networks")
 }
 
 // Smart Contract Deployments
 model SmartContract {
-  id              String                  @id @default(uuid())
-  name            String
-  type            SmartContractType
-  networkId       String                  @map("network_id")
-  address         String
-  abi             Json                    // Contract ABI
-  bytecode        String?                 // Contract bytecode
-  deploymentTxHash String?                @unique @map("deployment_tx_hash")
-  deployerAddress String                  @map("deployer_address")
+  id               String            @id @default(uuid())
+  name             String
+  type             SmartContractType
+  networkId        String            @map("network_id")
+  address          String
+  abi              Json // Contract ABI
+  bytecode         String? // Contract bytecode
+  deploymentTxHash String?           @unique @map("deployment_tx_hash")
+  deployerAddress  String            @map("deployer_address")
 
   // Contract information
-  version         String                  @default("1.0.0")
-  sourceUrl       String?                 @map("source_url")
-  verified        Boolean                 @default(false)
-  verifiedAt      DateTime?               @map("verified_at")
+  version    String    @default("1.0.0")
+  sourceUrl  String?   @map("source_url")
+  verified   Boolean   @default(false)
+  verifiedAt DateTime? @map("verified_at")
 
   // Status
-  isActive        Boolean                 @default(true) @map("is_active")
+  isActive Boolean @default(true) @map("is_active")
 
   // Auditable fields
-  createdAt       DateTime                @default(now()) @map("created_at")
-  updatedAt       DateTime                @updatedAt @map("updated_at")
-  createdBy       String?                 @map("created_by")
-  updatedBy       String?                 @map("updated_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
 
   // Relations
-  network         BlockchainNetwork       @relation(fields: [networkId], references: [id], onDelete: Cascade)
-  transactions    BlockchainTransaction[]
-  events          BlockchainEvent[]
+  network      BlockchainNetwork       @relation(fields: [networkId], references: [id], onDelete: Cascade)
+  transactions BlockchainTransaction[]
+  events       BlockchainEvent[]
 
   @@unique([networkId, address])
-  @@map("smart_contracts")
   @@index([networkId])
   @@index([type])
   @@index([address])
   @@index([verified])
   @@index([isActive])
   @@index([createdAt])
+  @@map("smart_contracts")
 }
 
 // Blockchain Transactions
 model BlockchainTransaction {
-  id              String                      @id @default(uuid())
-  txHash          String                      @unique @map("tx_hash")
-  networkId       String                      @map("network_id")
-  contractId      String?                     @map("contract_id")
+  id         String  @id @default(uuid())
+  txHash     String  @unique @map("tx_hash")
+  networkId  String  @map("network_id")
+  contractId String? @map("contract_id")
 
   // Transaction details
-  fromAddress     String                      @map("from_address")
-  toAddress       String                      @map("to_address")
-  value           String                      // Wei amount
-  data            String?                     // Transaction data
-  gasUsed         BigInt?                     @map("gas_used")
-  gasPrice        BigInt?                     @map("gas_price")
-  gasFee          Decimal?                    @map("gas_fee") @db.Decimal(20,8)
+  fromAddress String   @map("from_address")
+  toAddress   String   @map("to_address")
+  value       String // Wei amount
+  data        String? // Transaction data
+  gasUsed     BigInt?  @map("gas_used")
+  gasPrice    BigInt?  @map("gas_price")
+  gasFee      Decimal? @map("gas_fee") @db.Decimal(20, 8)
 
   // Status
-  status          BlockchainTransactionStatus @default(PENDING)
-  blockNumber     BigInt?                     @map("block_number")
-  blockHash       String?                     @map("block_hash")
-  confirmations   Int                         @default(0)
+  status        BlockchainTransactionStatus @default(PENDING)
+  blockNumber   BigInt?                     @map("block_number")
+  blockHash     String?                     @map("block_hash")
+  confirmations Int                         @default(0)
 
   // Timing
-  sentAt          DateTime                    @default(now()) @map("sent_at")
-  confirmedAt     DateTime?                   @map("confirmed_at")
-  failedAt        DateTime?                   @map("failed_at")
+  sentAt      DateTime  @default(now()) @map("sent_at")
+  confirmedAt DateTime? @map("confirmed_at")
+  failedAt    DateTime? @map("failed_at")
 
   // Error handling
-  errorMessage    String?                     @map("error_message")
-  retryCount      Int                         @default(0) @map("retry_count")
-  lastRetryAt     DateTime?                   @map("last_retry_at")
+  errorMessage String?   @map("error_message")
+  retryCount   Int       @default(0) @map("retry_count")
+  lastRetryAt  DateTime? @map("last_retry_at")
 
   // Metadata
-  metadata        Json?
-  note            String?
+  metadata Json?
+  note     String?
 
   // Auditable fields
-  createdAt       DateTime                    @default(now()) @map("created_at")
-  updatedAt       DateTime                    @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  network         BlockchainNetwork           @relation(fields: [networkId], references: [id], onDelete: Cascade)
-  contract        SmartContract?              @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  network  BlockchainNetwork @relation(fields: [networkId], references: [id], onDelete: Cascade)
+  contract SmartContract?    @relation(fields: [contractId], references: [id], onDelete: SetNull)
 
-  @@map("blockchain_transactions")
   @@index([networkId])
   @@index([contractId])
   @@index([txHash])
@@ -1215,42 +1217,42 @@ model BlockchainTransaction {
   @@index([sentAt])
   @@index([confirmedAt])
   @@index([createdAt])
+  @@map("blockchain_transactions")
 }
 
 // Blockchain Events
 model BlockchainEvent {
-  id              String                  @id @default(uuid())
-  networkId       String                  @map("network_id")
-  contractId      String                  @map("contract_id")
+  id         String @id @default(uuid())
+  networkId  String @map("network_id")
+  contractId String @map("contract_id")
 
   // Event details
-  eventName       String                  @map("event_name")
-  logIndex        Int                     @map("log_index")
-  transactionHash String                  @map("transaction_hash")
-  blockNumber     BigInt                  @map("block_number")
-  blockHash       String                  @map("block_hash")
+  eventName       String @map("event_name")
+  logIndex        Int    @map("log_index")
+  transactionHash String @map("transaction_hash")
+  blockNumber     BigInt @map("block_number")
+  blockHash       String @map("block_hash")
 
   // Event data
-  eventData       Json                    @map("event_data") // Decoded event parameters
-  rawLog          Json?                   @map("raw_log")
+  eventData Json  @map("event_data") // Decoded event parameters
+  rawLog    Json? @map("raw_log")
 
   // Processing
-  processed       Boolean                 @default(false)
-  processedAt     DateTime?               @map("processed_at")
-  processingError String?                 @map("processing_error")
+  processed       Boolean   @default(false)
+  processedAt     DateTime? @map("processed_at")
+  processingError String?   @map("processing_error")
 
   // Metadata
-  metadata        Json?
+  metadata Json?
 
   // Auditable fields
-  createdAt       DateTime                @default(now()) @map("created_at")
-  updatedAt       DateTime                @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  network         BlockchainNetwork       @relation(fields: [networkId], references: [id], onDelete: Cascade)
-  contract        SmartContract           @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  network  BlockchainNetwork @relation(fields: [networkId], references: [id], onDelete: Cascade)
+  contract SmartContract     @relation(fields: [contractId], references: [id], onDelete: Cascade)
 
-  @@map("blockchain_events")
   @@unique([transactionHash, logIndex])
   @@index([networkId])
   @@index([contractId])
@@ -1258,214 +1260,214 @@ model BlockchainEvent {
   @@index([blockNumber])
   @@index([processed])
   @@index([createdAt])
+  @@map("blockchain_events")
 }
 
 // Cashback Claims
 model CashbackClaim {
-  id              String                  @id @default(uuid())
-  cashbackId      String                  @unique @map("cashback_id")
-  userId          String                  @map("user_id")
+  id         String @id @default(uuid())
+  cashbackId String @unique @map("cashback_id")
+  userId     String @map("user_id")
 
   // Claim information
-  amount          Decimal                 @db.Decimal(15,2)
-  claimedAt       DateTime                @default(now()) @map("claimed_at")
-  validityExpires DateTime                @map("validity_expires")
+  amount          Decimal  @db.Decimal(15, 2)
+  claimedAt       DateTime @default(now()) @map("claimed_at")
+  validityExpires DateTime @map("validity_expires")
 
   // Blockchain details
-  networkId       String?                 @map("network_id")
-  walletAddress   String                  @map("wallet_address")
-  txHash          String?                 @unique @map("tx_hash")
+  networkId     String? @map("network_id")
+  walletAddress String  @map("wallet_address")
+  txHash        String? @unique @map("tx_hash")
 
   // Status
-  status          CashbackStatus          @default(PENDING)
-  claimedTxHash   String?                 @unique @map("claimed_tx_hash")
+  status        CashbackStatus @default(PENDING)
+  claimedTxHash String?        @unique @map("claimed_tx_hash")
 
   // Tracking
-  processedAt     DateTime?               @map("processed_at")
-  completedAt     DateTime?               @map("completed_at")
-  failedAt        DateTime?               @map("failed_at")
-  failureReason   String?                 @map("failure_reason")
+  processedAt   DateTime? @map("processed_at")
+  completedAt   DateTime? @map("completed_at")
+  failedAt      DateTime? @map("failed_at")
+  failureReason String?   @map("failure_reason")
 
   // Retry logic
-  retryCount      Int                     @default(0) @map("retry_count")
-  maxRetries      Int                     @default(3) @map("max_retries")
-  lastRetryAt     DateTime?               @map("last_retry_at")
+  retryCount  Int       @default(0) @map("retry_count")
+  maxRetries  Int       @default(3) @map("max_retries")
+  lastRetryAt DateTime? @map("last_retry_at")
 
   // Metadata
-  metadata        Json?
-  note            String?
+  metadata Json?
+  note     String?
 
   // Auditable fields
-  createdAt       DateTime                @default(now()) @map("created_at")
-  updatedAt       DateTime                @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  @@map("cashback_claims")
   @@index([userId])
   @@index([status])
   @@index([walletAddress])
   @@index([claimedAt])
   @@index([createdAt])
+  @@map("cashback_claims")
 }
 
 // Chat Support System
 enum ConversationType {
-  CUSTOMER_SUPPORT  // Khách hàng chat với shop
-  SHOP_TO_CUSTOMER  // Shop chat với khách
-  ADMIN_SUPPORT     // Admin hỗ trợ
+  CUSTOMER_SUPPORT // Khách hàng chat với shop
+  SHOP_TO_CUSTOMER // Shop chat với khách
+  ADMIN_SUPPORT // Admin hỗ trợ
 }
 
 enum ConversationStatus {
-  ACTIVE    // Đang hoạt động
-  WAITING   // Chờ phản hồi
-  RESOLVED  // Đã giải quyết
-  CLOSED    // Đã đóng
+  ACTIVE // Đang hoạt động
+  WAITING // Chờ phản hồi
+  RESOLVED // Đã giải quyết
+  CLOSED // Đã đóng
 }
 
 enum MessageType {
-  TEXT      // Tin nhắn văn bản
-  IMAGE     // Hình ảnh
-  FILE      // File đính kèm
-  SYSTEM    // Thông báo hệ thống
-  ORDER     // Thông tin đơn hàng
-  PRODUCT   // Thông tin sản phẩm
+  TEXT // Tin nhắn văn bản
+  IMAGE // Hình ảnh
+  FILE // File đính kèm
+  SYSTEM // Thông báo hệ thống
+  ORDER // Thông tin đơn hàng
+  PRODUCT // Thông tin sản phẩm
 }
 
 enum MessageStatus {
-  SENT      // Đã gửi
+  SENT // Đã gửi
   DELIVERED // Đã nhận
-  READ      // Đã đọc
-  FAILED    // Gửi thất bại
+  READ // Đã đọc
+  FAILED // Gửi thất bại
 }
 
 enum ParticipantRole {
-  CUSTOMER   // Khách hàng
+  CUSTOMER // Khách hàng
   SHOP_OWNER // Chủ shop
-  ADMIN      // Quản trị viên
-  SYSTEM     // Hệ thống
+  ADMIN // Quản trị viên
+  SYSTEM // Hệ thống
 }
 
 // Cuộc hội thoại
 model Conversation {
-  id              String             @id @default(uuid())
-  type            ConversationType   @default(CUSTOMER_SUPPORT)
-  status          ConversationStatus @default(ACTIVE)
+  id     String             @id @default(uuid())
+  type   ConversationType   @default(CUSTOMER_SUPPORT)
+  status ConversationStatus @default(ACTIVE)
 
   // Liên quan đến shop (nếu có)
-  shopId          String?            @map("shop_id")
+  shopId String? @map("shop_id")
 
   // Tiêu đề và mô tả
-  title           String?            // Tiêu đề cuộc trò chuyện
-  subject         String?            // Chủ đề (order issue, product question, etc.)
+  title   String? // Tiêu đề cuộc trò chuyện
+  subject String? // Chủ đề (order issue, product question, etc.)
 
   // Metadata
-  lastMessageAt   DateTime?          @map("last_message_at")
-  lastMessageText String?            @map("last_message_text")
+  lastMessageAt   DateTime? @map("last_message_at")
+  lastMessageText String?   @map("last_message_text")
 
   // Tracking
-  totalMessages   Int                @default(0) @map("total_messages")
-  unreadCount     Int                @default(0) @map("unread_count") // Số tin chưa đọc
+  totalMessages Int @default(0) @map("total_messages")
+  unreadCount   Int @default(0) @map("unread_count") // Số tin chưa đọc
 
   // Priority
-  priority        Int                @default(0) // 0: normal, 1: high, 2: urgent
+  priority Int @default(0) // 0: normal, 1: high, 2: urgent
 
   // Tags for filtering
-  tags            String[]           @default([])
+  tags String[] @default([])
 
   // Timestamps
-  resolvedAt      DateTime?          @map("resolved_at")
-  closedAt        DateTime?          @map("closed_at")
-  createdAt       DateTime           @default(now()) @map("created_at")
-  updatedAt       DateTime           @updatedAt @map("updated_at")
+  resolvedAt DateTime? @map("resolved_at")
+  closedAt   DateTime? @map("closed_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
 
   // Relations
-  shop            Shop?              @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  participants    ConversationParticipant[]
-  messages        Message[]
+  shop         Shop?                     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  participants ConversationParticipant[]
+  messages     Message[]
 
-  @@map("conversations")
   @@index([shopId])
   @@index([type])
   @@index([status])
   @@index([lastMessageAt])
   @@index([priority])
   @@index([createdAt])
+  @@map("conversations")
 }
 
 // Người tham gia cuộc hội thoại
 model ConversationParticipant {
-  id              String          @id @default(uuid())
-  conversationId  String          @map("conversation_id")
-  userId          String          @map("user_id")
-  role            ParticipantRole @default(CUSTOMER)
+  id             String          @id @default(uuid())
+  conversationId String          @map("conversation_id")
+  userId         String          @map("user_id")
+  role           ParticipantRole @default(CUSTOMER)
 
   // Tracking
-  joinedAt        DateTime        @default(now()) @map("joined_at")
-  leftAt          DateTime?       @map("left_at")
-  lastReadAt      DateTime?       @map("last_read_at")
-  unreadCount     Int             @default(0) @map("unread_count")
+  joinedAt    DateTime  @default(now()) @map("joined_at")
+  leftAt      DateTime? @map("left_at")
+  lastReadAt  DateTime? @map("last_read_at")
+  unreadCount Int       @default(0) @map("unread_count")
 
   // Settings
-  isMuted         Boolean         @default(false) @map("is_muted")
-  isActive        Boolean         @default(true) @map("is_active")
+  isMuted  Boolean @default(false) @map("is_muted")
+  isActive Boolean @default(true) @map("is_active")
 
   // Timestamps
-  createdAt       DateTime        @default(now()) @map("created_at")
-  updatedAt       DateTime        @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  conversation    Conversation    @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([conversationId, userId])
-  @@map("conversation_participants")
   @@index([conversationId])
   @@index([userId])
   @@index([role])
   @@index([isActive])
   @@index([createdAt])
+  @@map("conversation_participants")
 }
 
 // Tin nhắn
 model Message {
-  id              String        @id @default(uuid())
-  conversationId  String        @map("conversation_id")
-  senderId        String        @map("sender_id")
+  id             String @id @default(uuid())
+  conversationId String @map("conversation_id")
+  senderId       String @map("sender_id")
 
   // Nội dung
-  type            MessageType   @default(TEXT)
-  content         String        @db.Text // Nội dung tin nhắn
-  status          MessageStatus @default(SENT)
+  type    MessageType   @default(TEXT)
+  content String        @db.Text // Nội dung tin nhắn
+  status  MessageStatus @default(SENT)
 
   // File attachments (nếu có)
-  attachments     Json?         // Array of {url, type, name, size}
+  attachments Json? // Array of {url, type, name, size}
 
   // Reference to order or product
-  orderId         String?       @map("order_id")
-  productId       String?       @map("product_id")
+  orderId   String? @map("order_id")
+  productId String? @map("product_id")
 
   // Metadata
-  metadata        Json?         // Thông tin bổ sung
+  metadata Json? // Thông tin bổ sung
 
   // Reply to another message
-  replyToId       String?       @map("reply_to_id")
+  replyToId String? @map("reply_to_id")
 
   // Timestamps
-  sentAt          DateTime      @default(now()) @map("sent_at")
-  deliveredAt     DateTime?     @map("delivered_at")
-  readAt          DateTime?     @map("read_at")
-  editedAt        DateTime?     @map("edited_at")
-  deletedAt       DateTime?     @map("deleted_at")
+  sentAt      DateTime  @default(now()) @map("sent_at")
+  deliveredAt DateTime? @map("delivered_at")
+  readAt      DateTime? @map("read_at")
+  editedAt    DateTime? @map("edited_at")
+  deletedAt   DateTime? @map("deleted_at")
 
-  createdAt       DateTime      @default(now()) @map("created_at")
-  updatedAt       DateTime      @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  conversation    Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender          User          @relation(fields: [senderId], references: [id], onDelete: Cascade)
-  replyTo         Message?      @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
-  replies         Message[]     @relation("MessageReplies")
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  replyTo      Message?     @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies      Message[]    @relation("MessageReplies")
 
-  @@map("messages")
   @@index([conversationId])
   @@index([senderId])
   @@index([type])
@@ -1475,77 +1477,78 @@ model Message {
   @@index([sentAt])
   @@index([createdAt])
   @@index([deletedAt])
+  @@map("messages")
 }
 
 // Voucher
 enum VoucherType {
-  PERCENTAGE    // Giảm theo phần trăm (VD: 10%)
-  FIXED_AMOUNT  // Giảm số tiền cố định (VD: 50,000 VND)
+  PERCENTAGE // Giảm theo phần trăm (VD: 10%)
+  FIXED_AMOUNT // Giảm số tiền cố định (VD: 50,000 VND)
   FREE_SHIPPING // Miễn phí vận chuyển
 }
 
 // Enum cho trạng thái voucher
 enum VoucherStatus {
-  ACTIVE        // Đang hoạt động
-  INACTIVE      // Tạm ngưng
-  EXPIRED       // Hết hạn
-  DEPLETED      // Đã hết lượt sử dụng
+  ACTIVE // Đang hoạt động
+  INACTIVE // Tạm ngưng
+  EXPIRED // Hết hạn
+  DEPLETED // Đã hết lượt sử dụng
 }
 
 // Enum cho phạm vi áp dụng
 enum VoucherScope {
-  ALL           // Áp dụng cho tất cả
-  SHOP          // Chỉ áp dụng cho shop cụ thể
-  CATEGORY      // Áp dụng cho danh mục
-  PRODUCT       // Áp dụng cho sản phẩm cụ thể
+  ALL // Áp dụng cho tất cả
+  SHOP // Chỉ áp dụng cho shop cụ thể
+  CATEGORY // Áp dụng cho danh mục
+  PRODUCT // Áp dụng cho sản phẩm cụ thể
 }
 
 model Voucher {
-  id              String        @id @default(uuid())
-  code            String        @unique // Mã voucher (VD: SUMMER2024)
-  name            String        // Tên voucher
-  description     String?       @db.Text
-  
+  id          String  @id @default(uuid())
+  code        String  @unique // Mã voucher (VD: SUMMER2024)
+  name        String // Tên voucher
+  description String? @db.Text
+
   // Loại và giá trị giảm
-  type            VoucherType
-  discountValue   Decimal       @map("discount_value") @db.Decimal(15,2) // Giá trị (% hoặc số tiền)
-  maxDiscount     Decimal?      @map("max_discount") @db.Decimal(15,2) // Giảm tối đa (cho PERCENTAGE)
-  
+  type          VoucherType
+  discountValue Decimal     @map("discount_value") @db.Decimal(15, 2) // Giá trị (% hoặc số tiền)
+  maxDiscount   Decimal?    @map("max_discount") @db.Decimal(15, 2) // Giảm tối đa (cho PERCENTAGE)
+
   // Điều kiện áp dụng
-  minOrderValue   Decimal?      @map("min_order_value") @db.Decimal(15,2) // Giá trị đơn hàng tối thiểu
-  scope           VoucherScope  @default(ALL)
-  
+  minOrderValue Decimal?     @map("min_order_value") @db.Decimal(15, 2) // Giá trị đơn hàng tối thiểu
+  scope         VoucherScope @default(ALL)
+
   // Shop (nếu là voucher của shop)
-  shopId          String?       @map("shop_id")
-  
+  shopId String? @map("shop_id")
+
   // Số lượng và giới hạn
-  totalLimit      Int?          @map("total_limit") // Tổng số lượt sử dụng
-  usedCount       Int           @default(0) @map("used_count") // Đã sử dụng
-  limitPerUser    Int?          @map("limit_per_user") // Giới hạn mỗi user
-  
+  totalLimit   Int? @map("total_limit") // Tổng số lượt sử dụng
+  usedCount    Int  @default(0) @map("used_count") // Đã sử dụng
+  limitPerUser Int? @map("limit_per_user") // Giới hạn mỗi user
+
   // Thời gian hiệu lực
-  startDate       DateTime      @map("start_date")
-  endDate         DateTime      @map("end_date")
-  
+  startDate DateTime @map("start_date")
+  endDate   DateTime @map("end_date")
+
   // Trạng thái
-  status          VoucherStatus @default(ACTIVE)
-  isPublic        Boolean       @default(true) @map("is_public") // Public hay private
-  
+  status   VoucherStatus @default(ACTIVE)
+  isPublic Boolean       @default(true) @map("is_public") // Public hay private
+
   // Auditable fields
-  createdAt       DateTime      @default(now()) @map("created_at")
-  updatedAt       DateTime      @updatedAt @map("updated_at")
-  createdBy       String?       @map("created_by")
-  updatedBy       String?       @map("updated_by")
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
   // Soft delete
-  deletedAt       DateTime?     @map("deleted_at")
-  deletedBy       String?       @map("deleted_by")
-  
+  deletedAt DateTime? @map("deleted_at")
+  deletedBy String?   @map("deleted_by")
+
   // Relations
-  shop            Shop?         @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  orders          Order[]       // Orders đã sử dụng voucher này
-  
-  @@map("vouchers")
+  shop          Shop?          @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  orders        Order[] // Orders đã sử dụng voucher này
+  voucherUsages VoucherUsage[]
+
   @@index([code])
   @@index([shopId])
   @@index([status])
@@ -1554,4 +1557,29 @@ model Voucher {
   @@index([endDate])
   @@index([createdAt])
   @@index([deletedAt])
+  @@map("vouchers")
+}
+
+model VoucherUsage {
+  id        String  @id @default(uuid())
+  voucherId String  @map("voucher_id")
+  userId    String  @map("user_id")
+  orderId   String? @map("order_id") // Null nếu order bị hủy
+
+  discountAmount Decimal @map("discount_amount") @db.Decimal(15, 2) // Số tiền đã giảm
+
+  usedAt DateTime @default(now()) @map("used_at")
+
+  // Relations
+  voucher    Voucher   @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id])
+  order      Order?    @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  userRole   UserRole? @relation(fields: [userRoleId], references: [id])
+  userRoleId String?
+
+  @@index([voucherId])
+  @@index([userId])
+  @@index([orderId])
+  @@index([usedAt])
+  @@map("voucher_usages")
 }

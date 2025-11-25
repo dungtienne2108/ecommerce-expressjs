@@ -39,5 +39,6 @@ export interface CreateVoucherInput {
     voucherId?: string;
     discountAmount: number;
     error?: string;
+    type?: VoucherType;
   }
   

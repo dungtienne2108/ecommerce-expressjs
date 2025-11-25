@@ -35,6 +35,8 @@ import { ConversationRepository } from './conversation.repository';
 import { MessageRepository } from './message.repository';
 import { IVoucherRepository } from '../interfaces/voucher.interface';
 import { VoucherRepository } from './voucher.repository';
+import { IVoucherUsageRepository } from '../interfaces/voucherUsage.interface';
+import { VoucherUsageRepository } from './voucherUsage.repository';
 
 
 export class UnitOfWork implements IUnitOfWork {
@@ -63,6 +65,7 @@ export class UnitOfWork implements IUnitOfWork {
   private _conversations: IConversationRepository;
   private _conversationParticipants: IConversationParticipantRepository;
   private _vouchers: IVoucherRepository;
+  private _voucherUsages: IVoucherUsageRepository;
 
   constructor(private prisma: PrismaClient) {
     this._users = new UserRepository(this.prisma);
@@ -89,6 +92,7 @@ export class UnitOfWork implements IUnitOfWork {
     this._conversations = new ConversationRepository(this.prisma);
     this._conversationParticipants = new ConversationParticipantRepository(this.prisma);
     this._vouchers = new VoucherRepository(this.prisma);
+    this._voucherUsages = new VoucherUsageRepository(this.prisma);
   }
 
   get users(): IUserRepository {
@@ -185,6 +189,10 @@ export class UnitOfWork implements IUnitOfWork {
 
   get vouchers(): IVoucherRepository {
     return this._vouchers;
+  }
+
+  get voucherUsages(): IVoucherUsageRepository {
+    return this._voucherUsages;
   }
 
   async executeInTransaction<T>(operation: (uow: IUnitOfWork) => Promise<T>): Promise<T> {

@@ -3,6 +3,7 @@ import {
   PaymentMethod,
   PaymentStatus,
   Prisma,
+  VoucherType,
 } from '@prisma/client';
 import {
   ForbiddenError,
@@ -108,8 +109,10 @@ export class OrderService {
 
       // áp dụng voucher
       let discount = 0;
+      let shippingFee = input.shippingFee || 0;
       let voucherId: string | null = null;
       if (input.voucherCode) {
+        console.log('Áp dụng voucher:', input.voucherCode);
         const voucherResult = await this.voucherService.validateAndApplyVoucher(
           input.voucherCode,
           userId,
@@ -119,14 +122,22 @@ export class OrderService {
         );
 
         if (!voucherResult.isValid) {
+          console.log('Voucher không hợp lệ:', voucherResult.error);
           throw new ValidationError(voucherResult.error || 'Voucher không hợp lệ');
         }
 
-        discount = voucherResult.discountAmount;
+        if (voucherResult.type === VoucherType.FREE_SHIPPING){
+          shippingFee = 0;
+        }
+        else{
+          discount = voucherResult.discountAmount;
+        }
+
         voucherId = voucherResult.voucherId || null;
       }
 
-      const totalAmount = subTotal + (input.shippingFee ?? 0) - discount;
+      const totalAmount = subTotal + shippingFee - discount;
+      delete input.voucherCode;
 
       // tạo đơn hàng
       const order = await uow.orders.create({
@@ -136,20 +147,15 @@ export class OrderService {
         status: OrderStatus.PENDING,
         paymentStatus: PaymentStatus.PENDING,
         subtotal: subTotal,
-        shippingFee: input.shippingFee ?? 0,
+        shippingFee: shippingFee,
         discount: discount,
         totalAmount,
         ...input,
         createdBy: userId,
       });
 
-      if (voucherId){
-        await uow.vouchers.incrementUsedCount(voucherId);
-        await uow.orders.update(order.id, { voucher: { connect: { id: voucherId } } });
-      }
-
       // chạy song song các thao tác tạo order items, cập nhật tồn kho, tạo payment, xóa cart items
-      await Promise.all([
+      const promises = [
         uow.orderItems.createMany(
           orderItemsData.map((item) => ({ ...item, orderId: order.id }))
         ),
@@ -158,13 +164,29 @@ export class OrderService {
         uow.cartItem.deleteByCartId(cart.id),
         redis.del(CacheUtil.cartByUserId(userId)), // xóa cache giỏ hàng
         redis.del(CacheUtil.cartByUserId(userId)),
-      ]);
+      ];
+
+      if (voucherId){
+        promises.push(
+          uow.vouchers.incrementUsedCount(voucherId),
+          uow.orders.update(order.id, { voucher: { connect: { id: voucherId } } }),
+          uow.voucherUsages.create({
+            voucher: { connect: { id: voucherId } },
+            user: { connect: { id: userId } },
+            order: { connect: { id: order.id } },
+            discountAmount: discount,
+          })
+        )
+      }
+
+      await Promise.all(promises);
 
       // cache
       this.invalidateOrderCache(userId, shopId!).catch(console.error);
 
       return {
         ...order,
+        voucherId,
         currency: 'VND',
         subtotal: Number(order.subtotal),
         shippingFee: Number(order.shippingFee),

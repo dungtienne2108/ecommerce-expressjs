@@ -14,6 +14,7 @@ import { IRoleRepository, IUserRoleRepository } from "./role.interface";
 import { IShopRepository } from "./shop.interface";
 import { IUserRepository } from "./user.interface";
 import { IVoucherRepository } from "./voucher.interface";
+import { IVoucherUsageRepository } from "./voucherUsage.interface";
 
 export interface IUnitOfWork {
   users: IUserRepository;
@@ -39,6 +40,7 @@ export interface IUnitOfWork {
   conversations: IConversationRepository;
   conversationParticipants: IConversationParticipantRepository;
   vouchers: IVoucherRepository;
+  voucherUsages: IVoucherUsageRepository;
 
   executeInTransaction<T>(operation: (uow: IUnitOfWork) => Promise<T>): Promise<T>; // saveChanges
 }

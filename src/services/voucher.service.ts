@@ -6,7 +6,7 @@ import {
   VoucherType,
 } from '@prisma/client';
 import { IUnitOfWork } from '../repositories/interfaces/uow.interface';
-import { VoucherApplicationResult } from '../types/voucher.types';
+import { CreateVoucherInput, VoucherApplicationResult } from '../types/voucher.types';
 
 export class VoucherService {
   constructor(private uow: IUnitOfWork) {}
@@ -79,9 +79,11 @@ export class VoucherService {
     }
     // 6. Return kết quả
     return {
+      voucherId: voucher.id,
       isValid: true,
       discountAmount,
       error: '',
+      type: voucher.type,
     } as VoucherApplicationResult;
   }
 
@@ -89,5 +91,24 @@ export class VoucherService {
     return this.uow.vouchers.findByShopId(shopId, {
       status: VoucherStatus.ACTIVE,
     });
+  }
+
+  async getVoucherByCode(code: string): Promise<Voucher | null> {
+    return this.uow.vouchers.findByCode(code);
+  }
+
+  async getVoucherById(voucherId: string): Promise<Voucher | null> {
+    return this.uow.vouchers.findById(voucherId);
+  }
+
+  async createVoucher(data: CreateVoucherInput): Promise<Voucher> {
+    return this.uow.executeInTransaction(async (uow) => {
+      const voucher = await uow.vouchers.create(data);
+      return voucher;
+    });
+  }
+
+  async getUserAvailableVouchers(userId: string): Promise<Voucher[]> {
+    return this.uow.vouchers.findPublicVouchers();
   }
 }

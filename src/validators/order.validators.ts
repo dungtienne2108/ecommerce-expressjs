@@ -50,6 +50,10 @@ export const createOrderSchema = Joi.object({
   discount: Joi.number().min(0).optional().messages({
     'number.min': 'Giảm giá không được âm',
   }),
+
+  voucherCode: Joi.string().max(50).optional().messages({
+    'string.max': 'Mã voucher không được quá 50 ký tự',
+  }),
 });
 
 export const updateOrderStatusSchema = Joi.object({
