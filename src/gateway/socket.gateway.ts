@@ -5,6 +5,7 @@ import {
 } from '../middleware/socket-auth.middleware';
 import { IUnitOfWork } from '../repositories/interfaces/uow.interface';
 import { MessageStatus } from '@prisma/client';
+import { getAllowedOrigins } from '../middleware/cors';
 
 export class SocketGateway {
   private io: SocketIOServer;
@@ -14,9 +15,23 @@ export class SocketGateway {
     httpServer: any,
     private uow: IUnitOfWork
   ) {
+    // Sử dụng cùng danh sách origins với HTTP CORS
+    const allowedOrigins = getAllowedOrigins();
+
     this.io = new SocketIOServer(httpServer, {
       cors: {
-        origin: process.env.CLIENT_URL || '*',
+        origin: (origin, callback) => {
+          // Cho phép requests không có origin (mobile apps, Postman)
+          if (!origin) {
+            return callback(null, true);
+          }
+          
+          if (allowedOrigins.includes(origin)) {
+            callback(null, true);
+          } else {
+            callback(new Error('CORS not allowed for Socket.IO'));
+          }
+        },
         methods: ['GET', 'POST'],
         credentials: true,
       },

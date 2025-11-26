@@ -246,6 +246,7 @@ export class VNPayService {
     RspCode: string;
     Message: string;
   }> {
+    console.log('VNPay IPN params:', params);
     try {
       const secureHash = params.vnp_SecureHash;
       const txnRef = params.vnp_TxnRef;

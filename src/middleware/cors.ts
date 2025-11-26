@@ -1,24 +1,54 @@
 import { Request, Response, NextFunction } from 'express';
 import cors, { CorsOptions } from 'cors';
 
+// Danh sách origins được phép (export để dùng ở Socket.IO)
+export const getAllowedOrigins = (): string[] => {
+  return process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || [
+    'http://localhost:3000',
+    'http://localhost:3001', 
+    'http://localhost:5173',
+    'https://admin.socket.io',
+    'https://classy-sho.vercel.app',
+    'https://unacceptably-nonrealizable-erick.ngrok-free.dev'
+  ];
+};
+
 export const corsConfig: CorsOptions = {
   origin: (origin, callback) => {
-    const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
-      'http://localhost:3000',
-      'http://localhost:3001',
-      'http://localhost:5173',
-      'https://admin.socket.io'
-    ];
+    const allowedOrigins = getAllowedOrigins();
 
-    if (!origin) return callback(null, true);
+    // Log chỉ trong development
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('=== CORS Check ===');
+      console.log('Request Origin:', origin || 'NO ORIGIN');
+      console.log('Allowed Origins:', allowedOrigins);
+    }
 
-    if (allowedOrigins.includes(origin)) {
+    // Cho phép request không có origin (như mobile app hoặc Postman)
+    if (!origin) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('✓ No origin - allowing');
+      }
+      return callback(null, true);
+    }
+
+    // Kiểm tra exact match
+    const isAllowed = allowedOrigins.includes(origin);
+    
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Is Allowed:', isAllowed);
+    }
+
+    if (isAllowed) {
       callback(null, true);
     } else {
-      callback(new Error('Không được phép truy cập từ nguồn này'));
+      console.error('❌ CORS BLOCKED - Origin not in allowed list:', origin);
+      const error = new Error(`CORS policy violation: Origin ${origin} not allowed`);
+      (error as any).corsError = true;
+      callback(error);
     }
   },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
   allowedHeaders: [
     'Origin',
     'X-Requested-With',
@@ -26,7 +56,9 @@ export const corsConfig: CorsOptions = {
     'Accept',
     'Authorization',
     'X-API-Key',
+    'X-Custom-Header'
   ],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
   credentials: true,
   optionsSuccessStatus: 200,
   maxAge: 86400, // 24 hours
@@ -34,13 +66,26 @@ export const corsConfig: CorsOptions = {
 
 export const corsMiddleware = cors(corsConfig);
 
-// Custom CORS error handler
-export const corsErrorHandler = (err: Error, req: Request, res: Response, next: NextFunction): void => {
-  if (err.message === 'Không được phép truy cập từ nguồn này') {
+// Custom CORS error handler - phải được đặt KHÔNG phải là error middleware thường
+export const corsErrorHandler = (
+  err: Error,
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
+  if ((err as any).corsError) {
+    console.error('❌ CORS Error:', {
+      origin: req.get('origin'),
+      message: err.message,
+      method: req.method,
+      path: req.path
+    });
+
     res.status(403).json({
       error: 'CORS Error',
-      message: 'Không được phép truy cập từ nguồn này',
-      origin: req.get('Origin'),
+      message: 'Origin not allowed',
+      origin: req.get('origin'),
+      requestedPath: req.path
     });
   } else {
     next(err);

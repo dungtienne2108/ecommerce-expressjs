@@ -9,12 +9,16 @@ import rootRouter from './routes';
 export function createApp(): Application {
   const app = express();
 
-  // 1) Middleware cơ bản (helmet, parsers, logger)
-  applyBasicMiddleware(app);
+  // 0) Trust proxy - quan trọng khi chạy sau Vercel, Nginx, Cloudflare, etc.
+  // Cần thiết để express-rate-limit và các middleware khác hoạt động đúng
+  app.set('trust proxy', 1);
 
-  // 2) CORS nâng cao (chỉ DÙNG MỘT bản CORS – tránh trùng lặp)
+  // 1) CORS PHẢI ĐẶT TRƯỚC HẾT để handle preflight requests
   app.use(corsMiddleware);
   app.use(corsErrorHandler);
+
+  // 2) Middleware cơ bản (helmet, parsers, logger)
+  applyBasicMiddleware(app);
 
   // 3) Rate limiting chung
   // app.use(generalRateLimiter);
