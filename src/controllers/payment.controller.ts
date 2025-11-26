@@ -439,7 +439,7 @@ export class PaymentController {
       const response: ApiResponse = {
         success: true,
         message: 'Tạo VNPay payment URL thành công',
-        data: result,
+        data: result.paymentUrl,
       };
       res.status(200).json(response);
     }
@@ -459,6 +459,8 @@ export class PaymentController {
       }
 
       const result = await vnpayService.verifyReturnUrl(value);
+
+      console.log('VNPay Return URL result:', result);
 
       if (!result.isValid) {
         // Redirect to frontend with error

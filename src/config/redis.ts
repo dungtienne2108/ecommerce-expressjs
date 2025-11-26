@@ -123,6 +123,16 @@ class Redis {
     }
   }
 
+  public async keys(pattern: string): Promise<string[]> {
+    try {
+      const keys = await this.client.keys(pattern);
+      return keys;
+    } catch (error) {
+      console.error('❌ Redis lỗi keys:', error);
+      throw error;
+    }
+  }
+
   public async flushAll(): Promise<void> {
   try {
     await this.client.flushAll();

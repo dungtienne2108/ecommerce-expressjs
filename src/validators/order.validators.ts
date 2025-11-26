@@ -25,10 +25,10 @@ export const createOrderSchema = Joi.object({
 
   recipientPhone: Joi.string()
     .required()
-    .pattern(/^[0-9]{10,11}$/)
+    .pattern(/^[0-9]{10}$/)
     .messages({
       'any.required': 'Số điện thoại người nhận là bắt buộc',
-      'string.pattern.base': 'Số điện thoại phải có 10-11 chữ số',
+      'string.pattern.base': 'Số điện thoại phải có 10 chữ số',
     }),
 
   paymentMethod: Joi.string()

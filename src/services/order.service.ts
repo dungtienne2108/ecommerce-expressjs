@@ -798,6 +798,11 @@ export class OrderService {
           await redis.del(CacheUtil.shopOrders(shopId, page, 50));
         }
       }
+
+      const keys = await redis.keys('orders:list:*');
+      for (const key of keys) {
+        await redis.del(key);
+      }
     } catch (error) {
       console.error('Error invalidating order cache:', error);
     }

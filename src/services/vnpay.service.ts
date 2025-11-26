@@ -12,7 +12,7 @@ import {
   VNPayVerifyResult,
 } from '../types/vnpay.types';
 import { ValidationError, NotFoundError } from '../errors/AppError';
-import { PaymentMethod, PaymentStatus } from '@prisma/client';
+import { OrderStatus, PaymentMethod, PaymentStatus } from '@prisma/client';
 import dayjs from 'dayjs';
 import { paymentService } from '../config/container';
 
@@ -74,7 +74,7 @@ export class VNPayService {
           // Tạo payment mới
           payment = await this.uow.payments.create({
             order: { connect: { id: input.orderId } },
-            amount: input.amount,
+            amount: Number(order.totalAmount),
             currency: 'VND',
             method: PaymentMethod.CREDIT_CARD,
             status: PaymentStatus.PENDING,
@@ -96,7 +96,7 @@ export class VNPayService {
           vnp_Version: '2.1.0',
           vnp_Command: 'pay',
           vnp_TmnCode: this.config.tmnCode,
-          vnp_Amount: (input.amount * 100).toString(), // VNPay yêu cầu số tiền * 100
+          vnp_Amount: (Number(order.totalAmount) * 100).toString(), // VNPay yêu cầu số tiền * 100
           vnp_CurrCode: 'VND',
           vnp_TxnRef: txnRef,
           vnp_OrderInfo: input.orderInfo,
@@ -183,6 +183,14 @@ export class VNPayService {
       const responseCode = params.vnp_ResponseCode;
       const transactionStatus = params.vnp_TransactionStatus;
 
+      console.log('VNPay Return URL Verification:', {
+        secureHash,
+        checkSum,
+        signData,
+      });
+
+      console.log('VNPay return response code:', responseCode);
+
       // Kiểm tra response code
       if (responseCode !== VNPayResponseCode.SUCCESS) {
         return {
@@ -252,7 +260,14 @@ export class VNPayService {
       const signData = querystring.stringify(sortedParams);
       const checkSum = this.createSecureHash(signData, this.config.hashSecret);
 
+      console.log('VNPay IPN Verification:', {
+        secureHash,
+        checkSum,
+        signData,
+      });
+
       if (secureHash !== checkSum) {
+        console.error('Invalid VNPay IPN checksum');
         return {
           RspCode: '97',
           Message: 'Invalid Checksum',
@@ -262,6 +277,7 @@ export class VNPayService {
       // Tìm payment theo transaction reference
       const payment = await this.uow.payments.findByTransactionId(txnRef);
       if (!payment) {
+        console.error('Payment not found for VNPay IPN:', txnRef);
         return {
           RspCode: '01',
           Message: 'Order Not Found',
@@ -270,7 +286,13 @@ export class VNPayService {
 
       // Kiểm tra số tiền
       const amount = parseInt(params.vnp_Amount, 10) / 100;
-      if (amount !== Number(payment.amount)) {
+      const paymentAmount = Math.floor(Number(payment.amount)); // chỉ lấy phần nguyên
+
+      if (amount !== paymentAmount) {
+        console.error('Invalid amount for VNPay IPN:', {
+          expected: paymentAmount,
+          received: amount,
+        });
         return {
           RspCode: '04',
           Message: 'Invalid Amount',
@@ -279,6 +301,7 @@ export class VNPayService {
 
       // Kiểm tra payment đã được xử lý chưa
       if (payment.status === PaymentStatus.PAID) {
+        console.log('Payment already confirmed for VNPay IPN:', txnRef);
         return {
           RspCode: '02',
           Message: 'Order Already Confirmed',
@@ -287,6 +310,7 @@ export class VNPayService {
 
       // Cập nhật payment status
       if (responseCode === VNPayResponseCode.SUCCESS) {
+        console.log('start update payment VNPay IPN:', txnRef);
         await this.uow.executeInTransaction(async (uow) => {
           // Cập nhật payment
           await uow.payments.updateStatus(payment.id, PaymentStatus.PAID, {
@@ -301,19 +325,24 @@ export class VNPayService {
               paidAt: new Date(),
             },
           });
+          console.log('updated payment VNPay IPN:', txnRef);
 
           // Cập nhật order
           await uow.orders.update(payment.orderId, {
             paymentStatus: PaymentStatus.PAID,
+            status: OrderStatus.CONFIRMED,
             paidAt: new Date(),
           });
+          console.log('updated order for payment VNPay IPN:', txnRef);
 
           // tao cashback neu co the
           const order = await uow.orders.findById(payment.orderId, {
             user: true,
           });
           if (order?.userId) {
+            console.log('check create cashback for order:', order.id);
             const user = await uow.users.findById(order.userId);
+            console.log('user info for cashback:', user);
             if (user?.walletAddress) {
               const existingCashback = await uow.cashbacks.findByPaymentId(
                 payment.id
