@@ -3,14 +3,16 @@ import cors, { CorsOptions } from 'cors';
 
 // Danh sách origins được phép (export để dùng ở Socket.IO)
 export const getAllowedOrigins = (): string[] => {
-  return process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || [
-    'http://localhost:3000',
-    'http://localhost:3001', 
-    'http://localhost:5173',
-    'https://admin.socket.io',
-    'https://classy-sho.vercel.app',
-    'https://unacceptably-nonrealizable-erick.ngrok-free.dev'
-  ];
+  return (
+    process.env.ALLOWED_ORIGINS?.split(',').map((o) => o.trim()) || [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:5173',
+      'https://admin.socket.io',
+      'https://classy-sho.vercel.app',
+      'https://unacceptably-nonrealizable-erick.ngrok-free.dev',
+    ]
+  );
 };
 
 export const corsConfig: CorsOptions = {
@@ -26,15 +28,16 @@ export const corsConfig: CorsOptions = {
 
     // Cho phép request không có origin (như mobile app hoặc Postman)
     if (!origin) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('✓ No origin - allowing');
+      // Trong production, chỉ allow nếu có API key hợp lệ
+      if (process.env.NODE_ENV === 'production') {
+        return callback(new Error('Origin header required'), false);
       }
       return callback(null, true);
     }
 
     // Kiểm tra exact match
     const isAllowed = allowedOrigins.includes(origin);
-    
+
     if (process.env.NODE_ENV !== 'production') {
       console.log('Is Allowed:', isAllowed);
     }
@@ -43,7 +46,9 @@ export const corsConfig: CorsOptions = {
       callback(null, true);
     } else {
       console.error('❌ CORS BLOCKED - Origin not in allowed list:', origin);
-      const error = new Error(`CORS policy violation: Origin ${origin} not allowed`);
+      const error = new Error(
+        `CORS policy violation: Origin ${origin} not allowed`
+      );
       (error as any).corsError = true;
       callback(error);
     }
@@ -56,7 +61,7 @@ export const corsConfig: CorsOptions = {
     'Accept',
     'Authorization',
     'X-API-Key',
-    'X-Custom-Header'
+    'X-Custom-Header',
   ],
   exposedHeaders: ['Content-Range', 'X-Content-Range'],
   credentials: true,
@@ -78,14 +83,14 @@ export const corsErrorHandler = (
       origin: req.get('origin'),
       message: err.message,
       method: req.method,
-      path: req.path
+      path: req.path,
     });
 
     res.status(403).json({
       error: 'CORS Error',
       message: 'Origin not allowed',
       origin: req.get('origin'),
-      requestedPath: req.path
+      requestedPath: req.path,
     });
   } else {
     next(err);

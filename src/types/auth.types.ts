@@ -29,6 +29,7 @@ export interface UserResponse {
   birthday?: Date | null;
   avatarUrl?: string;
   roles?: string[];
+  walletAddress?: string;
   status: UserStatus;
 }
 

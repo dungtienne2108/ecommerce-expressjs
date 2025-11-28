@@ -172,6 +172,7 @@ export class AuthService {
         birthday: user.birthday ?? null,
         avatarUrl: user.avatarUrl ?? '',
         roles: roleTypes,
+        walletAddress: user.walletAddress ?? '',
         status: user.status,
       };
 
@@ -351,11 +352,8 @@ export class AuthService {
       });
 
       if (!user) {
-        // Security: Don't reveal whether email exists
-        // But still return success to prevent email enumeration
-        throw new UserNotFoundError(
-          'If the email exists, a reset link would be sent'
-        );
+        console.log(`User not found with email: ${data.email}`);
+        return;
       }
 
       // Generate reset token
@@ -479,6 +477,7 @@ export class AuthService {
         birthday: user.birthday ?? null,
         avatarUrl: user.avatarUrl ?? '',
         roles: roleTypes,
+        walletAddress: user.walletAddress ?? '',
         status: user.status,
       };
 

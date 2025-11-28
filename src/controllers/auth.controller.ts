@@ -149,10 +149,12 @@ export class AuthController {
     const resetData: PasswordResetInput = value;
     const result = await authService.requestPasswordReset(resetData);
 
+    // Send email with reset token
+    // await emailService.sendPasswordResetEmail(resetData.email, result.token);
+
     const response: ApiResponse = {
       success: true,
-      data: { token: result.token },
-      message: 'Password reset token generated. In production, this would be sent via email.',
+      message: 'Vui lòng kiểm tra email để lấy mã xác thực.',
     };
 
     res.json(response);

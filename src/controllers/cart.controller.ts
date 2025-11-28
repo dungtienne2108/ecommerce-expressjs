@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { cartService } from '../config/container';
-import { ValidationError } from '../errors/AppError';
+import { UnauthorizedError, ValidationError } from '../errors/AppError';
 import { ApiResponse } from '../types/common';
 import { asyncHandler } from '../middleware/errorHandler';
 
@@ -45,6 +45,9 @@ export class CartController {
 
   addItem = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const { cartId } = req.params;
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedError('Chưa đăng nhập');
+
     const { variantId, quantity } = req.body;
 
     if (!cartId) {
@@ -57,7 +60,12 @@ export class CartController {
       throw new ValidationError('Bắt buộc phải có số lượng hợp lệ');
     }
 
-    const result = await cartService.addItem(cartId, variantId, quantity);
+    const result = await cartService.addItem(
+      cartId,
+      variantId,
+      quantity,
+      userId
+    );
 
     const response: ApiResponse = {
       success: true,
@@ -82,7 +90,7 @@ export class CartController {
       if (quantity === undefined || typeof quantity !== 'number') {
         throw new ValidationError('Bắt buộc phải có số lượng hợp lệ');
       }
-      if(quantity < 1){
+      if (quantity < 1) {
         throw new ValidationError('Số lượng phải lớn hơn hoặc bằng 1');
       }
 

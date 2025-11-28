@@ -6,10 +6,37 @@ import { JwtErrorHandler } from '../errors/JwtErrorHandler';
 dotenv.config();
 
 export class JwtUtils {
-  private static readonly ACCESS_SECRET = process.env.JWT_SECRET || 'fallback-secret';
-  private static readonly REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'fallback-refresh-secret';
-  private static readonly ACCESS_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
-  private static readonly REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
+  private static readonly ACCESS_SECRET = (() => {
+    if (!process.env.JWT_SECRET) {
+      throw new Error('Nghiêm trọng: Biến môi trường JWT_SECRET không được đặt');
+    }
+    return process.env.JWT_SECRET;
+  })();
+  private static readonly REFRESH_SECRET = (() => {
+    if (!process.env.JWT_REFRESH_SECRET) {
+      throw new Error(
+        'Nghiêm trọng: Biến môi trường JWT_REFRESH_SECRET không được đặt'
+      );
+    }
+    return process.env.JWT_REFRESH_SECRET;
+  })();
+  private static readonly ACCESS_EXPIRES_IN = (() => {
+    if (!process.env.JWT_EXPIRES_IN) {
+      throw new Error(
+        'Nghiêm trọng: Biến môi trường JWT_EXPIRES_IN không được đặt'
+      );
+    }
+    return process.env.JWT_EXPIRES_IN;
+  })();
+
+  private static readonly REFRESH_EXPIRES_IN = (() => {
+    if (!process.env.JWT_REFRESH_EXPIRES_IN) {
+      throw new Error(
+        'Nghiêm trọng: Biến môi trường JWT_REFRESH_EXPIRES_IN không được đặt'
+      );
+    }
+    return process.env.JWT_REFRESH_EXPIRES_IN;
+  })();
 
   /**
    * Generate access token
@@ -61,21 +88,26 @@ export class JwtUtils {
    */
   static getTokenExpirationTime(): number {
     const expiresIn = this.ACCESS_EXPIRES_IN;
-    
+
     // Convert to seconds
     if (typeof expiresIn === 'string') {
       const unit = expiresIn.slice(-1);
       const value = parseInt(expiresIn.slice(0, -1));
-      
+
       switch (unit) {
-        case 's': return value;
-        case 'm': return value * 60;
-        case 'h': return value * 60 * 60;
-        case 'd': return value * 24 * 60 * 60;
-        default: return 24 * 60 * 60; // Default 24 hours
+        case 's':
+          return value;
+        case 'm':
+          return value * 60;
+        case 'h':
+          return value * 60 * 60;
+        case 'd':
+          return value * 24 * 60 * 60;
+        default:
+          return 24 * 60 * 60; // Default 24 hours
       }
     }
-    
+
     return typeof expiresIn === 'number' ? expiresIn : 24 * 60 * 60;
   }
 
@@ -110,7 +142,7 @@ export class JwtUtils {
   static verifyPasswordResetToken(token: string): { userId: string } {
     try {
       const payload = jwt.verify(token, this.ACCESS_SECRET) as any;
-      
+
       if (payload.type !== 'password_reset') {
         throw new Error('Invalid token type');
       }

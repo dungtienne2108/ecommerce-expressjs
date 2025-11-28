@@ -16,7 +16,7 @@ const helmetOptions = {
     maxAge: 31536000,
     includeSubDomains: true,
     preload: true,
-  },
+  } ,
 };
 
 // Apply basic middleware

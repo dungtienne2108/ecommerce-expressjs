@@ -43,6 +43,16 @@ export const passwordResetRateLimiter = rateLimit({
   },
 });
 
+export const vnpayRateLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 phút
+  max: 10,
+  message: {
+    success: false,
+    error: 'Quá nhiều yêu cầu, vui lòng thử lại sau',
+    code: 'RATE_LIMIT_EXCEEDED',
+  },
+});
+
 // General API rate limiter
 export const generalRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 phút

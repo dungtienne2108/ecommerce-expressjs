@@ -7,6 +7,7 @@ import {
 } from '../middleware/auth.middleware';
 import { RoleType, UserStatus } from '@prisma/client';
 import { paymentController } from '../controllers/payment.controller';
+import { vnpayRateLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 
@@ -210,13 +211,13 @@ router.post(
  * @route GET /api/payments/vnpay/return
  * @desc Xử lý VNPay return URL (không cần auth - user redirect từ VNPay)
  */
-router.get('/vnpay/return', paymentController.handleVNPayReturn);
+router.get('/vnpay/return', vnpayRateLimiter, paymentController.handleVNPayReturn);
 
 /**
  * @route GET /api/payments/vnpay/ipn
  * @desc Xử lý VNPay IPN (không cần auth - callback từ VNPay server)
  */
-router.get('/vnpay/ipn', paymentController.handleVNPayIPN);
+router.get('/vnpay/ipn', vnpayRateLimiter, paymentController.handleVNPayIPN);
 
 /**
  * @route POST /api/payments/vnpay/create

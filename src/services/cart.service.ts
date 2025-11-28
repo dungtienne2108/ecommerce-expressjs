@@ -103,10 +103,20 @@ export class CartService {
   async addItem(
     cartId: string,
     variantId: string,
-    quantity: number
+    quantity: number,
+    userId: string
   ): Promise<CartItemResponse> {
     if (quantity <= 0) {
       throw new ValidationError('Số lượng phải lớn hơn 0');
+    }
+
+    const cart = await this.uow.cart.findById(cartId);
+    if(!cart){
+      throw new NotFoundError('Giỏ hàng không tồn tại');
+    }
+
+    if(cart.userId && cart.userId !== userId){
+      throw new ValidationError('Bạn không có quyền thêm sản phẩm vào giỏ hàng này');
     }
 
     return this.uow.executeInTransaction(async (uow) => {
