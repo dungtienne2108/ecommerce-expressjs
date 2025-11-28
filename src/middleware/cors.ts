@@ -28,10 +28,6 @@ export const corsConfig: CorsOptions = {
 
     // Cho phép request không có origin (như mobile app hoặc Postman)
     if (!origin) {
-      // Trong production, chỉ allow nếu có API key hợp lệ
-      if (process.env.NODE_ENV === 'production') {
-        return callback(new Error('Origin header required'), false);
-      }
       return callback(null, true);
     }
 
