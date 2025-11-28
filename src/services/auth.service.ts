@@ -353,7 +353,7 @@ export class AuthService {
 
       if (!user) {
         console.log(`User not found with email: ${data.email}`);
-        return;
+        return { token: '' };
       }
 
       // Generate reset token

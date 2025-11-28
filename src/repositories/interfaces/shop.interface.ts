@@ -1,6 +1,5 @@
 import { Shop, ShopStatus, Prisma, ApprovalStatus } from '@prisma/client';
 import { ShopFilters, ShopIncludes, ShopWithRelations } from '../../types/shop.types';
-import { Decimal } from '@prisma/client/runtime/library';
 
 export interface IShopRepository {
   // Basic CRUD
@@ -143,7 +142,7 @@ export interface IShopRepository {
    * @param amount - Số tiền doanh thu cần cập nhật
    * @returns Promise trả về đối tượng Shop đã được cập nhật doanh thu
    */
-  updateRevenue(shopId: string, amount: Decimal): Promise<Shop>;
+  updateRevenue(shopId: string, amount: number): Promise<Shop>;
   
   /**
    * Tăng số lượng đơn hàng của cửa hàng
@@ -161,7 +160,7 @@ export interface IShopRepository {
    */
   updateRating(
     id: string,
-    newRating: Decimal,
+    newRating: number,
     reviewCount: number
   ): Promise<void>;
   

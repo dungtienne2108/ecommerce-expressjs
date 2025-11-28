@@ -262,7 +262,7 @@ export class ShopRepository implements IShopRepository {
     return shop;
   }
 
-  async updateRevenue(shopId: string, amount: Prisma.Decimal): Promise<Shop> {
+  async updateRevenue(shopId: string, amount: number): Promise<Shop> {
     const shop = await this.prisma.shop.update({
       where: { id: shopId },
       data: {
@@ -289,7 +289,7 @@ export class ShopRepository implements IShopRepository {
 
   async updateRating(
     id: string,
-    newRating: Prisma.Decimal,
+    newRating: number,
     reviewCount: number
   ): Promise<void> {
     await this.prisma.shop.update({
