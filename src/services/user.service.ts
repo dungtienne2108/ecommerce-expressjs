@@ -181,7 +181,7 @@ export class UserService {
         birthday: data.birthday || null,
         gender: data.gender || null,
         avatarUrl: null,
-        status: data.status || UserStatus.ACTIVE,
+        status: UserStatus.ACTIVE,
         roles: {
           create: [
             {
@@ -195,7 +195,7 @@ export class UserService {
       });
 
       // Invalidate cache
-      await this.invalidateUserCache();
+      // await this.invalidateUserCache();
 
       return this.excludeSensitiveData(user);
     });

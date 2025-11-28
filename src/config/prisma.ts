@@ -20,6 +20,7 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 export const testDatabaseConnection = async (): Promise<void> => {
   try {
     await prisma.$connect();
+    await prisma.$executeRaw`SELECT 1`;
     console.log('✅ Kết nối cơ sở dữ liệu thành công');
   } catch (error) {
     console.error('❌ Kết nối cơ sở dữ liệu thất bại:', error);
