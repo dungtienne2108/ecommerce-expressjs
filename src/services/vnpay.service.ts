@@ -52,6 +52,7 @@ export class VNPayService {
         // Kiểm tra order tồn tại
         const order = await this.uow.orders.findById(input.orderId);
         if (!order) {
+          console.error('Order not found:', input.orderId);
           throw new NotFoundError('Đơn hàng không tồn tại');
         }
 
@@ -60,6 +61,7 @@ export class VNPayService {
           input.orderId
         );
         if (existingPayment && existingPayment.status === PaymentStatus.PAID) {
+          console.error('Order already paid:', input.orderId);
           throw new ValidationError('Đơn hàng đã được thanh toán');
         }
 
@@ -69,8 +71,10 @@ export class VNPayService {
           existingPayment &&
           existingPayment.status === PaymentStatus.PENDING
         ) {
+          console.error('Order already has a pending payment:', input.orderId);
           payment = existingPayment;
         } else {
+          console.log('Creating new payment for order:', input.orderId);
           // Tạo payment mới
           payment = await this.uow.payments.create({
             order: { connect: { id: input.orderId } },
@@ -81,15 +85,19 @@ export class VNPayService {
             expiredAt: new Date(Date.now() + 15 * 60 * 1000), // 15 phút
             note: input.orderInfo,
           });
+          console.log('Created new payment for order:', input.orderId);
         }
 
         // Tạo transaction reference (mã tham chiếu giao dịch)
         const txnRef = `${order.orderNumber}_${Date.now()}`;
+        console.log('Transaction reference:', txnRef);
 
         // Tạo thời gian tạo giao dịch (yyyyMMddHHmmss)
         const createDate = dayjs().format('YYYYMMDDHHmmss');
+        console.log('Create date:', createDate);
 
         const ipAddr = input.ipAddr === '::1' ? '127.0.0.1' : input.ipAddr;
+        console.log('IP address:', ipAddr);
 
         // Tạo các tham số VNPay
         const vnpParams: any = {
@@ -114,21 +122,26 @@ export class VNPayService {
 
         // Sắp xếp params theo thứ tự alphabet
         const sortedParams = this.sortObject(vnpParams);
+        console.log('Sorted parameters:', sortedParams);
 
         // Tạo query string
         const signData = querystring.stringify(sortedParams);
+        console.log('Sign data:', signData);
 
         // Tạo secure hash
         const secureHash = this.createSecureHash(
           signData,
           this.config.hashSecret
         );
+        console.log('Secure hash:', secureHash);
 
         // Thêm secure hash vào params
         sortedParams.vnp_SecureHash = secureHash;
+        console.log('Sorted parameters with secure hash:', sortedParams);
 
         // Tạo payment URL
         const paymentUrl = `${this.config.url}?${querystring.stringify(sortedParams)}`;
+        console.log('Payment URL:', paymentUrl);
 
         // Lưu transaction reference vào payment
         await this.uow.payments.update(payment.id, {
@@ -138,6 +151,7 @@ export class VNPayService {
             createdAt: new Date(),
           },
         });
+        console.log('Updated payment:', payment);
 
         return {
           paymentUrl,
