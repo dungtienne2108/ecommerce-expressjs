@@ -419,10 +419,17 @@ export class PaymentController {
       }
 
       // Get client IP address
-      const ipAddr =
-        req.headers['x-forwarded-for'] ||
-        req.socket.remoteAddress ||
-        '127.0.0.1';
+      let ipAddr = '';
+
+      if (req.headers['x-forwarded-for']) {
+        ipAddr = (req.headers['x-forwarded-for'] as string | undefined)
+          ?.split(',')[0]
+          ?.trim() ?? '';
+      } else if (req.socket?.remoteAddress) {
+        ipAddr = req.socket.remoteAddress as string;
+      } else {
+        ipAddr = '127.0.0.1';
+      }
 
       const result = await vnpayService.createPaymentUrl({
         orderId: value.orderId,
