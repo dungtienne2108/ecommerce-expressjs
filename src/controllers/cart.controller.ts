@@ -113,6 +113,10 @@ export class CartController {
   removeItem = asyncHandler(
     async (req: Request, res: Response): Promise<void> => {
       const { cartId, itemId } = req.params;
+      const userId = req.user?.id;
+      if (!userId) {
+        throw new UnauthorizedError('Chưa đăng nhập');
+      }
 
       if (!cartId) {
         throw new ValidationError('Bắt buộc phải có Cart ID');
@@ -121,7 +125,7 @@ export class CartController {
         throw new ValidationError('Bắt buộc phải có Item ID');
       }
 
-      const result = await cartService.removeItem(cartId, itemId);
+      const result = await cartService.removeItem(cartId, itemId, userId);
 
       const response: ApiResponse = {
         success: true,

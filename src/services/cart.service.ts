@@ -239,8 +239,14 @@ export class CartService {
     });
   }
 
-  async removeItem(cartId: string, itemId: string): Promise<CartItemResponse> {
+  async removeItem(cartId: string, itemId: string, userId: string): Promise<CartItemResponse> {
     return this.uow.executeInTransaction(async (uow) => {
+
+      const cart = await uow.cart.findById(cartId);
+      if(cart?.userId && cart.userId !== userId){
+        throw new ValidationError('Bạn không có quyền xóa sản phẩm này');
+      }
+      
       const cartItem = await uow.cartItem.findById(itemId);
       if (!cartItem || cartItem.cartId !== cartId) {
         throw new NotFoundError('Cart item not found');
@@ -248,8 +254,6 @@ export class CartService {
 
       await uow.cartItem.delete(itemId);
 
-      // Invalidate cache
-      const cart = await uow.cart.findById(cartId);
       await this.invalidateCartCache(
         cartId,
         undefined,
