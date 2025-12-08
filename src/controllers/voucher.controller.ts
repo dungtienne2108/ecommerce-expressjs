@@ -3,8 +3,9 @@ import { asyncHandler } from '../middleware/errorHandler';
 import { ValidationError } from '../errors/AppError';
 import { ApiResponse } from '../types/common';
 import { voucherService } from '../config/container';
-import { CreateVoucherInput } from '../types/voucher.types';
+import { CreateVoucherInput, VoucherFilters } from '../types/voucher.types';
 import { logger } from '../services/logger';
+import { VoucherScope, VoucherStatus } from '@prisma/client';
 
 export class VoucherController {
   createVoucher = asyncHandler(async (req: Request, res: Response) => {
@@ -27,6 +28,24 @@ export class VoucherController {
     };
 
     res.status(201).json(response);
+  });
+
+  getVouchers = asyncHandler(async (req: Request, res: Response) => {
+    const filters: VoucherFilters = {
+      status: req.query.status as VoucherStatus,
+      scope: req.query.scope as VoucherScope,
+      shopId: req.query.shopId as string,
+      searchTerm: req.query.searchTerm as string,
+      page: req.query.page ? Number(req.query.page) : 1,
+      limit: req.query.limit ? Number(req.query.limit) : 10,
+    };
+    const vouchers = await voucherService.getVouchers(filters);
+    const response: ApiResponse = {
+      success: true,
+      data: vouchers,
+      message: 'Lấy danh sách voucher thành công',
+    };
+    res.status(200).json(response);
   });
 
   getById = asyncHandler(async (req: Request, res: Response) => {

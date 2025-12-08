@@ -4,9 +4,13 @@ import {
   VoucherScope,
   VoucherStatus,
   VoucherType,
+  Prisma,
 } from '@prisma/client';
 import { IUnitOfWork } from '../repositories/interfaces/uow.interface';
-import { CreateVoucherInput, VoucherApplicationResult, VoucherResponse } from '../types/voucher.types';
+import { CreateVoucherInput, VoucherApplicationResult, VoucherFilters, VoucherResponse } from '../types/voucher.types';
+import { PaginatedResponse } from '../types/common';
+import redis from '../config/redis';
+import { CacheUtil } from '../utils/cache.util';
 import { logger } from './logger';
 
 export class VoucherService {
@@ -112,6 +116,76 @@ export class VoucherService {
     const vouchers = await this.uow.vouchers.findPublicVouchers();
     logger.info('getUserAvailableVouchers', { module: 'VoucherService' }, { vouchers });
     return vouchers.map(voucher => this.mapVoucherToResponse(voucher));
+  }
+
+  /**
+   * Lấy danh sách vouchers với filters và pagination
+   * @param filters VoucherFilters (page, limit, sortBy, sortOrder, status, scope, shopId, searchTerm)
+   * @returns PaginatedResponse<VoucherResponse>
+   */
+  async getVouchers(
+    filters: VoucherFilters
+  ): Promise<PaginatedResponse<VoucherResponse>> {
+    // Tạo cache key từ filters
+    const cacheKey = CacheUtil.vouchersByFilters(filters);
+    const cacheResult = await redis.get(cacheKey).catch(err => {
+      console.error('Redis get error:', err);
+      return null;
+    });
+    if (cacheResult) {
+      return JSON.parse(cacheResult);
+    }
+
+    const page = filters.page || 1;
+    const limit = filters.limit || 10;
+    const sortBy = filters.sortBy || 'createdAt';
+    const sortOrder = filters.sortOrder || 'desc';
+
+    // Xây dựng điều kiện where
+    const whereConditions: Prisma.VoucherWhereInput = {
+      ...(filters.status ? { status: filters.status } : {}),
+      ...(filters.scope ? { scope: filters.scope } : {}),
+      ...(filters.shopId ? { shopId: filters.shopId } : {}),
+      ...(filters.searchTerm
+        ? {
+            OR: [
+              { code: { contains: filters.searchTerm, mode: 'insensitive' } },
+              { name: { contains: filters.searchTerm, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+    };
+
+    const voucherFindManyArgs: Prisma.VoucherFindManyArgs = {
+      where: whereConditions,
+      orderBy: {
+        [sortBy]: sortOrder,
+      },
+      skip: (page - 1) * limit,
+      take: limit,
+    };
+
+    const [vouchers, total] = await Promise.all([
+      this.uow.vouchers.findMany(voucherFindManyArgs),
+      this.uow.vouchers.count(whereConditions),
+    ]);
+
+    const result = {
+      data: vouchers.map((v) => this.mapVoucherToResponse(v)),
+      pagination: {
+        total,
+        totalPages: Math.ceil(total / limit),
+        currentPage: page,
+        limit,
+        hasNext: page * limit < total,
+        hasPrev: page > 1,
+      },
+    };
+
+    // Lưu vào cache 15 phút
+    await redis.set(cacheKey, JSON.stringify(result), 900);
+
+    return result;
   }
 
   private mapVoucherToResponse(voucher: Voucher): VoucherResponse {

@@ -31,6 +31,10 @@ export class CacheUtil {
   static categoriesByName(name: string): string {
     return `categories:name:${name.toLowerCase()}`;
   }
+
+  static categoriesAll(): string {
+    return 'categories:all';
+  }
   // ==================== USER ====================
   static userById(id: string): string {
     return `user:${id}`;
@@ -91,6 +95,13 @@ export class CacheUtil {
 
   static userOrders(userId: string, page: number, limit: number): string {
     return `orders:user:${userId}:page:${page}:limit:${limit}`;
+  }
+
+  static userOrdersByFilters(userId: string, filters: Record<string, any>): string {
+    const key = `orders:user:${userId}:filters:${JSON.stringify(filters)
+      .split('')
+      .reduce((hash, char) => ((hash << 5) - hash) + char.charCodeAt(0), 0)}`;
+    return key;
   }
 
   static shopOrders(shopId: string, page: number, limit: number): string {
@@ -167,6 +178,34 @@ export class CacheUtil {
 
   static categoriesList(): string {
     return 'categories:all';
+  }
+
+  // ==================== VOUCHER ====================
+  static voucherById(id: string): string {
+    return `voucher:${id}`;
+  }
+
+  static voucherByCode(code: string): string {
+    return `voucher:code:${code}`;
+  }
+
+  static vouchersByFilters(filters: Record<string, any>): string {
+    const key = `vouchers:list:${JSON.stringify(filters)
+      .split('')
+      .reduce((hash, char) => ((hash << 5) - hash) + char.charCodeAt(0), 0)}`;
+    return key;
+  }
+
+  static voucherListAll(page: number, limit: number): string {
+    return `vouchers:all:page:${page}:limit:${limit}`;
+  }
+
+  static vouchersByShop(shopId: string): string {
+    return `vouchers:shop:${shopId}`;
+  }
+
+  static publicVouchers(): string {
+    return 'vouchers:public';
   }
 
   // ==================== VARIANTS ====================

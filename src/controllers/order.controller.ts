@@ -10,7 +10,7 @@ import { UnauthorizedError, ValidationError } from '../errors/AppError';
 import { orderService } from '../config/container';
 import { ApiResponse } from '../types/common';
 import { OrderFilters } from '../types/order.types';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus, PaymentStatus } from '@prisma/client';
 
 export class OrderController {
   /**
@@ -90,11 +90,16 @@ export class OrderController {
    */
   getMyOrders = asyncHandler(
     async (req: Request, res: Response): Promise<void> => {
-      const { error, value } = getOrdersQuerySchema.validate(req.query);
-      if (error) {
-        throw new ValidationError(
-          error.details?.[0]?.message || 'Validation error'
-        );
+      const minAmount = req.query.minTotalAmount ? Number(req.query.minTotalAmount as string) : 0;
+      const maxAmount = req.query.maxTotalAmount ? Number(req.query.maxTotalAmount as string) : 0;
+
+      const filters: OrderFilters = {
+        status: req.query.status as OrderStatus,
+        page: req.query.page ? parseInt(req.query.page as string, 10) : 1,
+        limit: req.query.limit ? parseInt(req.query.limit as string, 10) : 10,
+        paymentStatus: req.query.paymentStatus as PaymentStatus,
+        minTotalAmount: minAmount ?? 0,
+        maxTotalAmount: maxAmount ?? 0,
       }
 
       const userId = req.user?.id;
@@ -102,11 +107,7 @@ export class OrderController {
         throw new ValidationError('User chưa đăng nhập');
       }
 
-      const result = await orderService.getUserOrders(userId, {
-        page: value.page,
-        limit: value.take,
-        status: value.status,
-      });
+      const result = await orderService.getUserOrders(userId, filters);
 
       const response: ApiResponse = {
         success: true,

@@ -1,4 +1,4 @@
-import { Prisma, Order, OrderItem, OrderStatusHistory, OrderStatus } from "@prisma/client";
+import { Prisma, Order, OrderItem, OrderStatusHistory, OrderStatus, PaymentStatus } from "@prisma/client";
 import { OrderIncludes } from "../../types/order.types";
 
 export interface IOrderRepository{
@@ -45,6 +45,10 @@ export interface IOrderRepository{
       skip?: number;
       take?: number;
       status?: OrderStatus;
+      paymentStatus?: PaymentStatus;
+      minTotalAmount?: number;
+      maxTotalAmount?: number;
+      shopId?: string;
       orderBy?: Prisma.OrderOrderByWithRelationInput;
     }
   ): Promise<Order[]>;

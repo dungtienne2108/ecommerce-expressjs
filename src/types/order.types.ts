@@ -5,7 +5,7 @@ export interface OrderSearchFilters extends PaginationParams{
   createdFrom?: Date;
   createdTo?: Date;
   status?: OrderStatus;
-  paymentStatus?: string;
+  paymentStatus?: PaymentStatus;
   minTotalAmount?: number;
   maxTotalAmount?: number;
   shopId?: string;
@@ -112,7 +112,7 @@ export type OrderListResponse = {
 
 export interface OrderFilters extends PaginationParams {
   status?: OrderStatus;
-  paymentStatus?: string;
+  paymentStatus?: PaymentStatus;
   minTotalAmount?: number;
   maxTotalAmount?: number;
   shopId?: string;

@@ -1,6 +1,6 @@
 // validators/order.validators.ts
 import Joi from 'joi';
-import { OrderStatus, PaymentMethod, ShippingMethod } from '@prisma/client';
+import { OrderStatus, PaymentMethod, PaymentStatus, ShippingMethod } from '@prisma/client';
 
 export const createOrderSchema = Joi.object({
   shippingMethod: Joi.string()
@@ -88,10 +88,44 @@ export const getOrdersQuerySchema = Joi.object({
     'number.integer': 'Take phải là số nguyên',
   }),
 
+  page: Joi.number().integer().min(1).default(1).messages({
+    'number.min': 'Page phải lớn hơn 0',
+    'number.integer': 'Page phải là số nguyên',
+  }),
+
+  limit: Joi.number().integer().min(1).max(100).default(10).messages({
+    'number.min': 'Limit phải lớn hơn 0',
+    'number.max': 'Limit không được quá 100',
+    'number.integer': 'Limit phải là số nguyên',
+  }),
+
+  paymentStatus: Joi.string()
+    .valid(...Object.values(PaymentStatus))
+    .optional()
+    .messages({
+      'any.only': 'Trạng thái thanh toán không hợp lệ',
+    }),
+
+  minTotalAmount: Joi.number().min(0).optional()
+    .messages({
+      'number.min': 'Tổng tiền đơn hàng không được âm',
+    }),
+
+  maxTotalAmount: Joi.number().min(0).optional()
+    .messages({
+      'number.min': 'Tổng tiền đơn hàng không được âm',
+    }),
+
+  shopId: Joi.string().optional()
+    .messages({
+      'string.pattern.base': 'Shop ID không hợp lệ',
+    }),
+
   status: Joi.string()
     .valid(...Object.values(OrderStatus))
     .optional()
     .messages({
       'any.only': 'Trạng thái đơn hàng không hợp lệ',
     }),
+
 });

@@ -21,7 +21,7 @@ import {
 import { PaginatedResponse } from '../../types/common';
 
 export class ProductRepository implements IProductRepository {
-  constructor(private prisma: PrismaClient) {}
+  constructor(private prisma: PrismaClient) { }
 
   async create(data: Prisma.ProductCreateInput): Promise<Product> {
     return this.prisma.product.create({
@@ -207,21 +207,22 @@ export class ProductRepository implements IProductRepository {
     }
 
     // Filter theo khoảng giá (đã fix lỗi 1=0)
+    console.log('filters.priceRange', filters.priceRange);
     if (filters.priceRange) {
-      const orConditions: Prisma.ProductVariantWhereInput[] = [];
+      const andConditions: Prisma.ProductVariantWhereInput[] = [];
 
       if (filters.priceRange.min !== undefined) {
-        orConditions.push({ price: { gte: filters.priceRange.min } });
+        andConditions.push({ price: { gte: filters.priceRange.min } });
       }
       if (filters.priceRange.max !== undefined) {
-        orConditions.push({ price: { lte: filters.priceRange.max } });
+        andConditions.push({ price: { lte: filters.priceRange.max } });
       }
 
-      // ✅ Chỉ thêm variants nếu có điều kiện thật
-      if (orConditions.length > 0) {
-        where.variants = { some: { OR: orConditions } };
+      if (andConditions.length > 0) {
+        where.variants = { some: { AND: andConditions } };
       }
     }
+
 
     // Filter theo từ khóa tìm kiếm
     if (filters.searchTerm) {
@@ -236,6 +237,8 @@ export class ProductRepository implements IProductRepository {
     const orderBy: Prisma.ProductOrderByWithRelationInput = {
       [sortBy]: sortOrder,
     };
+
+    console.log('where', where);
 
     // ===== Pagination =====
     const skip = (page - 1) * limit;

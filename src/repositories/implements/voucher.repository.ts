@@ -233,6 +233,17 @@ export class VoucherRepository implements IVoucherRepository {
 
  
 
+  async findMany(args: Prisma.VoucherFindManyArgs): Promise<Voucher[]> {
+
+    return this.prisma.voucher.findMany({
+      ...args,
+      where: {
+        ...args.where,
+        deletedAt: null,
+      },
+    });
+  }
+
   async count(where?: Prisma.VoucherWhereInput): Promise<number> {
 
     return this.prisma.voucher.count({

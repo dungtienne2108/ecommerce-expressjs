@@ -19,6 +19,12 @@ router.post(
   ),
   voucherController.createVoucher
 );
+
+router.get('/', combineMiddleware(
+  authenticateToken,
+  requireStatus([UserStatus.ACTIVE]),
+  requireRole(RoleType.SYSTEM_ADMIN, RoleType.SELLER)
+), voucherController.getVouchers);
 router.get('/:id', voucherController.getById);
 router.get('/code/:code', voucherController.getByCode);
 router.get('/customer/public', voucherController.getPublicVouchers);

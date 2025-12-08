@@ -63,8 +63,8 @@ export class ProductController {
   findMany = asyncHandler(
     async (req: Request, res: Response): Promise<void> => {
       const priceRange: { min?: number; max?: number } = {};
-      const minPrice = req.query.min ? Number(req.query.min) : undefined;
-      const maxPrice = req.query.max ? Number(req.query.max) : undefined;
+      const minPrice = req.query.minPrice ? Number(req.query.minPrice) : undefined;
+      const maxPrice = req.query.maxPrice ? Number(req.query.maxPrice) : undefined;
 
       if (minPrice !== undefined) priceRange.min = minPrice;
       if (maxPrice !== undefined) priceRange.max = maxPrice;
@@ -80,6 +80,8 @@ export class ProductController {
         limit: req.query.limit ? Number(req.query.limit) : 10,
         sortOrder: req.query.sortOrder as 'asc' | 'desc',
       };
+
+      console.log('filters', filters);
 
       const products = await productService.findMany(filters);
 

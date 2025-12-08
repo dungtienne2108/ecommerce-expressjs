@@ -1,5 +1,5 @@
 import { IOrderRepository } from '../interfaces/order.interface';
-import { Order, OrderItem, OrderStatus, Prisma, PrismaClient } from '@prisma/client';
+import { Order, OrderItem, OrderStatus, PaymentStatus, Prisma, PrismaClient } from '@prisma/client';
 import { OrderIncludes } from '../../types/order.types';
 export class OrderRepository implements IOrderRepository {
   constructor(private prisma: PrismaClient) {}
@@ -44,14 +44,24 @@ export class OrderRepository implements IOrderRepository {
       skip?: number;
       take?: number;
       status?: OrderStatus;
+      paymentStatus?: PaymentStatus;
+      minTotalAmount?: number;
+      maxTotalAmount?: number;
+      shopId?: string;
       orderBy?: Prisma.OrderOrderByWithRelationInput;
     }
   ): Promise<Order[]> {
+    const where: Prisma.OrderWhereInput = {
+      userId,
+      ...(options?.status !== undefined && { status: options.status }),
+      ...(options?.paymentStatus !== undefined && { paymentStatus: options.paymentStatus }),
+      ...(options?.minTotalAmount !== undefined && { subtotal: { gte: options.minTotalAmount } }),
+      ...(options?.maxTotalAmount !== undefined && { subtotal: { lte: options.maxTotalAmount } }),
+    };
+    console.log('where', where);
+    console.log('options', options);
     return this.prisma.order.findMany({
-      where: {
-        userId,
-        ...(options?.status && { status: options.status }),
-      },
+      where,
       skip: options?.skip ?? 0,
       take: options?.take ?? 10,
       orderBy: options?.orderBy || { createdAt: 'desc' },

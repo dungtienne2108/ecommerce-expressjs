@@ -148,5 +148,13 @@ export interface IVoucherRepository {
 
    */
 
+  /**
+   * Lấy danh sách vouchers với findMany (để hỗ trợ pagination và filter)
+   * @param args - Prisma VoucherFindManyArgs
+   * @returns Promise<Voucher[]>
+   */
+  
+  findMany(args: Prisma.VoucherFindManyArgs): Promise<Voucher[]>;
+
   count(where?: Prisma.VoucherWhereInput): Promise<number>;
 }

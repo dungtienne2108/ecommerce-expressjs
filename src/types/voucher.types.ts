@@ -1,4 +1,5 @@
 import { VoucherScope, VoucherStatus, VoucherType } from "@prisma/client";
+import { PaginationParams } from './common';
 
 export interface CreateVoucherInput {
     code: string;
@@ -28,10 +29,11 @@ export interface CreateVoucherInput {
     scope?: VoucherScope;
   }
 
-  export interface VoucherFilters {
+  export interface VoucherFilters extends PaginationParams {
     status?: VoucherStatus;
     scope?: VoucherScope;
-    isPublic?: boolean;
+    shopId?: string;
+    searchTerm?: string;
   }
   
   export interface VoucherApplicationResult {

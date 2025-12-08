@@ -24,6 +24,7 @@ import { CacheUtil } from '../utils/cache.util';
 import { filter } from 'compression';
 import { Web3CashbackService } from './web3Cashback.service';
 import { VoucherService } from './voucher.service';
+import { logger } from './logger';
 
 export class OrderService {
   private web3CashbackService: Web3CashbackService;
@@ -305,7 +306,7 @@ export class OrderService {
     const limit = options?.limit || 10;
 
     // Tạo cache key
-    const cacheKey = CacheUtil.userOrders(userId, page, limit);
+    const cacheKey = CacheUtil.userOrdersByFilters(userId, options as Record<string, any>);
 
     // Kiểm tra cache
     const cachedResult = await redis.get(cacheKey);
@@ -313,17 +314,26 @@ export class OrderService {
       return JSON.parse(cachedResult);
     }
 
+    logger.info(`Lấy danh sách đơn hàng của người dùng ${userId} với filters: ${JSON.stringify(options)}`);
+    console.log('options', options);
     const orders = await this.uow.orders.findByUserId(userId, {
       skip: (page - 1) * limit,
       take: limit,
-      ...(options?.status !== undefined ? { status: options.status } : {}),
+      ...(options?.status !== undefined && { status: options.status }),
+      ...(options?.paymentStatus !== undefined && { paymentStatus: options.paymentStatus as PaymentStatus }),
+      ...(options?.minTotalAmount !== undefined && { subtotal: { gte: options.minTotalAmount } }),
+      ...(options?.maxTotalAmount !== undefined && { subtotal: { lte: options.maxTotalAmount } }),
     });
+    console.log('orders', orders);
 
     const total = await this.uow.orders.count({
       userId,
-      ...(options?.status && { status: options.status }),
+      ...(options?.status !== undefined && { status: options.status }),
+      ...(options?.paymentStatus !== undefined && { paymentStatus: options.paymentStatus as PaymentStatus }),
+      ...(options?.minTotalAmount !== undefined && { subtotal: { gte: options.minTotalAmount } }),
+      ...(options?.maxTotalAmount !== undefined && { subtotal: { lte: options.maxTotalAmount } }),
     });
-
+    console.log('total', total);
     const result = {
       data: orders.map((o) => this.mapToOrderResponse(o)),
       pagination: {
@@ -335,7 +345,7 @@ export class OrderService {
         hasPrev: page > 1,
       },
     };
-
+    console.log('result', result);
     // Lưu vào cache 15 phút
     await redis.set(cacheKey, JSON.stringify(result), 900);
 
