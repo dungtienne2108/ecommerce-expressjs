@@ -27,6 +27,7 @@ import {
 } from '../errors/AppError';
 import { CreateUserInput } from '../types/user.types';
 import { IUnitOfWork } from '../repositories/interfaces/uow.interface';
+import { logger } from './logger';
 
 export class AuthService {
   private readonly prisma: PrismaClient;
@@ -480,6 +481,8 @@ export class AuthService {
         walletAddress: user.walletAddress ?? '',
         status: user.status,
       };
+
+      logger.info('getProfile', { module: 'AuthService' }, { userResponse });
 
       return userResponse;
     } catch (error) {

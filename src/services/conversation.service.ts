@@ -15,6 +15,13 @@ export class ConversationService {
   }
 
   async createConversation(request: CreateConversationRequest, userId: string) {
+
+    // kiểm tra có conversation nào giữa user và shop chưa
+    const conversation = await this.uow.conversations.findByUserIdAndShopId(userId, request.shopId ?? '');
+    if (conversation) { // nếu có conversation thì return luôn
+      return conversation;
+    }
+
     return this.uow.executeInTransaction(async (uow) => {
       const conversation = await uow.conversations.create({
         type: request.type,

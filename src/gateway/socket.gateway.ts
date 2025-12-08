@@ -22,7 +22,7 @@ export class SocketGateway {
       cors: {
         origin: (origin, callback) => {
           // Cho phép requests không có origin (mobile apps, Postman)
-          if (!origin) {
+          if (!origin || origin === 'null' || origin === 'undefined') {
             return callback(null, true);
           }
           
@@ -84,6 +84,8 @@ export class SocketGateway {
             socket.emit('error', { message: 'Invalid request' });
             return;
           }
+
+          console.log('data', data);
 
           const message = await this.uow.messages.create({
             conversationId,

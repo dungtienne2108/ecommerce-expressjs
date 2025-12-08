@@ -17,6 +17,38 @@ import { CacheUtil } from '../utils/cache.util';
 export class ShopService {
   constructor(private uow: IUnitOfWork) {}
 
+  async findById(id: string): Promise<ShopResponse | null> {
+
+    const cacheKey = CacheUtil.shopById(id);
+    const cachedShop = await redis.get(cacheKey);
+    if (cachedShop) {
+      return JSON.parse(cachedShop);
+    }
+
+    const shop = await this.uow.shops.findById(id, { owner: true });
+    if (!shop) {
+      return null;
+    }
+    const shopResponse = {
+      id: shop.id,
+      name: shop.name,
+      category: shop.category,
+      logoUrl: shop.logoUrl,
+      rating: Number(shop.rating),
+      reviewCount: Number(shop.reviewCount),
+      createdAt: shop.createdAt,
+      address: shop.street + ' ' + shop.ward + ' ' + shop.district + ' ' + shop.city,
+      owner: {
+        id: shop.owner.id,
+        name: shop.owner.firstName + ' ' + shop.owner.lastName,
+      },
+    } as ShopResponse;
+
+    await redis.set(cacheKey, JSON.stringify(shopResponse), 3600);
+
+    return shopResponse;
+  }
+
   async findByOwnerId(ownerId: string): Promise<ShopResponse | null> {
     // Kiểm tra cache trước
     const cacheKey = CacheUtil.shopByOwnerId(ownerId);

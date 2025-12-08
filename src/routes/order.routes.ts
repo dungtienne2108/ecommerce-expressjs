@@ -27,6 +27,16 @@ router.get(
 );
 
 router.get(
+  '/shop/:shopId',
+  combineMiddleware(
+    authenticateToken,
+    requireStatus([UserStatus.ACTIVE]),
+    requireRole(RoleType.SYSTEM_ADMIN, RoleType.SELLER)
+  ),
+  orderController.getShopOrders
+)
+
+router.get(
   '/:orderId',
   combineMiddleware(authenticateToken, requireStatus([UserStatus.ACTIVE])),
   orderController.getOrderById

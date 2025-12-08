@@ -46,6 +46,19 @@ export class ConversationRepository implements IConversationRepository {
     });
   }
 
+  async findByUserIdAndShopId(userId: string, shopId: string): Promise<Conversation | null> {
+    return this.prisma.conversation.findFirst({
+      where: {
+        participants: {
+          some: {
+            userId: userId,
+          },
+        },
+        shopId: shopId,
+      },
+    });
+  }
+
   async findById(
     id: string,
   ): Promise<ConversationWithInclude | null> {

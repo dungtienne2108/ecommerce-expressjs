@@ -46,6 +46,10 @@ export interface ShopResponse{
   name: string;
   category?: string;
   logoUrl?: string;
+  rating?: number;
+  reviewCount?: number;
+  createdAt?: Date;
+  address?: string;
   owner?: {
     id: string;
     name: string;

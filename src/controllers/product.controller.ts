@@ -36,9 +36,32 @@ export class ProductController {
     }
   );
 
+  findByShopId = asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
+      const { shopId } = req.params;
+      if (!shopId) {
+        throw new ValidationError('Shop ID is required');
+      }
+
+      const userId = req.user?.id;
+      if (!userId) {
+        throw new ValidationError('User chưa đăng nhập');
+      }
+
+      const products = await productService.findByShopId(shopId);
+
+      const response: ApiResponse = {
+        success: true,
+        data: products,
+        message: 'Lấy danh sách sản phẩm thành công',
+      };
+
+      res.json(response);
+    }
+  );
+
   findMany = asyncHandler(
     async (req: Request, res: Response): Promise<void> => {
-      
       const priceRange: { min?: number; max?: number } = {};
       const minPrice = req.query.min ? Number(req.query.min) : undefined;
       const maxPrice = req.query.max ? Number(req.query.max) : undefined;
@@ -47,6 +70,7 @@ export class ProductController {
       if (maxPrice !== undefined) priceRange.max = maxPrice;
 
       const filters: ProductFilters = {
+        shopId: req.query.shopId as string,
         status: req.query.status as ProductStatus,
         categoryId: req.query.categoryId as string,
         searchTerm: req.query.searchTerm as string,

@@ -11,8 +11,37 @@ import { combineMiddleware } from '../utils/middleware.util';
 import { UserStatus } from '../constants/status';
 import { PermissionAction, PermissionModule, RoleType } from '@prisma/client';
 import { ActivityLogger } from '../services/logger.service';
+import { productController } from '../controllers/product.controller';
 
 const router = Router();
+
+router.get(
+  '/:id',
+  combineMiddleware(
+    authenticateToken,
+    requireStatus([UserStatus.ACTIVE]),
+  ),
+  shopController.findById
+);
+
+router.get(
+  '/user',
+  combineMiddleware(
+    authenticateToken,
+    requireStatus([UserStatus.ACTIVE]),
+    requireRole(RoleType.SYSTEM_ADMIN, RoleType.SELLER)
+  ),
+  shopController.findByOwnerId
+)
+
+router.get(
+  '/:shopId/products',
+  combineMiddleware(
+    authenticateToken,
+    requireStatus([UserStatus.ACTIVE]),
+  ),
+  productController.findByShopId
+);
 
 router.post(
   '/',

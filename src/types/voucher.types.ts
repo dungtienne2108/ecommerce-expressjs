@@ -41,4 +41,23 @@ export interface CreateVoucherInput {
     error?: string;
     type?: VoucherType;
   }
+
+  export interface VoucherResponse {
+    id: string;
+    code: string;
+    name: string;
+    description?: string;
+    type: VoucherType;
+    discountValue: number;
+    maxDiscount?: number;
+    minOrderValue?: number;
+    scope: VoucherScope;
+    shopId?: string | null;
+    totalLimit?: number | null;
+    usedCount?: number | null;
+    limitPerUser?: number | null;
+    startDate: Date;
+    endDate: Date;
+    status: VoucherStatus;
+  }
   

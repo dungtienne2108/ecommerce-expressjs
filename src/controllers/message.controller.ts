@@ -19,6 +19,8 @@ export class MessageController {
         throw new ValidationError('Không tìm thấy conversation ID');
       }
 
+      console.log('req.body', req.body);
+
       const request: CreateMessageRequest = {
         conversationId: conversationId,
         content: req.body.content,

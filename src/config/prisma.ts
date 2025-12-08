@@ -1,5 +1,6 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
+import { logger } from '../services/logger';
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -10,7 +11,7 @@ const connectionString = `${process.env.DATABASE_URL}`;
 const adapter = new PrismaPg({connectionString});
 
 export const prisma = globalForPrisma.prisma ?? new PrismaClient({
-  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+  log: logger.getPrismaLogConfig() as any,
   adapter: adapter,
 });
 
@@ -21,9 +22,9 @@ export const testDatabaseConnection = async (): Promise<void> => {
   try {
     await prisma.$connect();
     await prisma.$executeRaw`SELECT 1`;
-    console.log('✅ Kết nối cơ sở dữ liệu thành công');
+    logger.info('Kết nối cơ sở dữ liệu thành công', { module: 'Database' });
   } catch (error) {
-    console.error('❌ Kết nối cơ sở dữ liệu thất bại:', error);
+    logger.error('Kết nối cơ sở dữ liệu thất bại:', error as Error, { module: 'Database' });
     throw error;
   }
 };
@@ -31,5 +32,5 @@ export const testDatabaseConnection = async (): Promise<void> => {
 // Graceful shutdown
 export const disconnectDatabase = async (): Promise<void> => {
   await prisma.$disconnect();
-  console.log('Đã ngắt kết nối cơ sở dữ liệu');
+  logger.info('Đã ngắt kết nối cơ sở dữ liệu', { module: 'Database' });
 };

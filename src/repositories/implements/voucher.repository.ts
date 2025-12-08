@@ -1,6 +1,8 @@
+import { logger } from '../../services/logger';
 import { IVoucherRepository } from '../interfaces/voucher.interface';
 
 import { Voucher, VoucherStatus, Prisma, PrismaClient } from '@prisma/client';
+import { LogContext } from '../../services/logger';
 
  
 
@@ -27,8 +29,6 @@ export class VoucherRepository implements IVoucherRepository {
     });
 
   }
-
- 
 
   async findByCode(code: string): Promise<Voucher | null> {
 
@@ -124,7 +124,7 @@ export class VoucherRepository implements IVoucherRepository {
 
     const now = new Date();
 
-    return this.prisma.voucher.findMany({
+    const vouchers = await this.prisma.voucher.findMany({
 
       where: {
 
@@ -149,7 +149,8 @@ export class VoucherRepository implements IVoucherRepository {
       orderBy: options?.orderBy || { createdAt: 'desc' },
 
     });
-
+    logger.info('findPublicVouchers', { module: 'VoucherRepository' }, { vouchers });
+    return vouchers;
   }
 
  

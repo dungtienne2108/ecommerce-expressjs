@@ -89,6 +89,57 @@ export class ProductRepository implements IProductRepository {
     });
   }
 
+  async findByShopId(shopId: string): Promise<ProductWithRelations[]> {
+    return this.prisma.product.findMany({
+      where: { shopId, deletedAt: null },
+      include: {
+        images: { where: { deletedAt: null }, orderBy: { sortOrder: 'asc' } },
+        options: {
+          where: { deletedAt: null },
+          include: {
+            values: {
+              where: { deletedAt: null },
+              orderBy: { sortOrder: 'asc' },
+            },
+          },
+        },
+        variants: {
+          where: { deletedAt: null },
+          include: {
+            images: {
+              where: { deletedAt: null },
+              select: {
+                id: true,
+                imageUrl: true,
+                isPrimary: true,
+                sortOrder: true,
+              },
+            },
+            optionValues: {
+              where: { deletedAt: null },
+              select: {
+                id: true,
+                productOptionId: true,
+                productOptionValueId: true,
+                productOption: { select: { name: true } },
+                productOptionValue: { select: { value: true } },
+              },
+            },
+          },
+        },
+        categories: {
+          where: { deletedAt: null },
+          select: {
+            category: {
+              select: { id: true, name: true, parentCategoryId: true },
+            },
+          },
+        },
+        shop: true,
+      },
+    });
+  }
+
   async update(id: string, data: Prisma.ProductUpdateInput): Promise<Product> {
     return this.prisma.product.update({
       where: { id },
@@ -110,7 +161,9 @@ export class ProductRepository implements IProductRepository {
     });
   }
 
-  async findUnique(where: Prisma.ProductWhereUniqueInput): Promise<Product | null> {
+  async findUnique(
+    where: Prisma.ProductWhereUniqueInput
+  ): Promise<Product | null> {
     return this.prisma.product.findUnique({
       where,
     });
@@ -132,6 +185,11 @@ export class ProductRepository implements IProductRepository {
     const where: Prisma.ProductWhereInput = {
       deletedAt: null,
     };
+
+    // Filter theo shopId
+    if (filters.shopId) {
+      where.shopId = filters.shopId;
+    }
 
     // Filter theo trạng thái
     if (filters.status) {
@@ -195,7 +253,7 @@ export class ProductRepository implements IProductRepository {
             orderBy: { sortOrder: 'asc' },
             take: 1,
           },
-          variants: { where: { deletedAt: null }, take: 1 },
+          variants: { where: { deletedAt: null } },
         },
       }),
       this.prisma.product.count({ where }),
@@ -287,28 +345,28 @@ export class ProductRepository implements IProductRepository {
     createdBy: string
   ): Promise<void> {
     // 🔥 OPTIMIZED: Use transaction for all operations
-      for (const option of options) {
-        const createdOption = await this.prisma.productOption.create({
-          data: {
-            productId,
-            name: option.name,
+    for (const option of options) {
+      const createdOption = await this.prisma.productOption.create({
+        data: {
+          productId,
+          name: option.name,
+          createdBy,
+          updatedBy: createdBy,
+        },
+      });
+
+      if (option.values && option.values.length > 0) {
+        await this.prisma.productOptionValue.createMany({
+          data: option.values.map((value, index) => ({
+            productOptionId: createdOption.id,
+            value: value.value,
+            sortOrder: value.sortOrder ?? index,
             createdBy,
             updatedBy: createdBy,
-          },
+          })),
         });
-
-        if (option.values && option.values.length > 0) {
-          await this.prisma.productOptionValue.createMany({
-            data: option.values.map((value, index) => ({
-              productOptionId: createdOption.id,
-              value: value.value,
-              sortOrder: value.sortOrder ?? index,
-              createdBy,
-              updatedBy: createdBy,
-            })),
-          });
-        }
       }
+    }
   }
 
   async removeOptions(

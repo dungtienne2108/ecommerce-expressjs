@@ -47,7 +47,9 @@ export class AuthController {
     }
 
     const loginData: LoginInput = value;
+    console.log('loginData', loginData);
     const result = await authService.login(loginData);
+    console.log('result', result);
 
     const response: ApiResponse = {
       success: true,

@@ -16,6 +16,7 @@ export interface VariantIncludes {
 }
 
 export interface ProductFilters extends PaginationParams {
+  shopId?: string;
   status?: ProductStatus;
   categoryId?: string;
   searchTerm?: string;
@@ -46,12 +47,20 @@ export interface ProductResponse {
   createdAt: Date;
   imageUrl?: string;
   price: number;
+  totalStock?: number;
+  soldCount?: number;
 }
 
 export interface ProductDetailResponse extends ProductResponse {
   shop?: {
     id: string;
     name: string;
+    address?: string;
+    logoUrl?: string;
+    rating?: number;
+    reviewCount?: number;
+    createdAt?: Date;
+    updatedAt?: Date;
   };
   variants?: {
     id: string;

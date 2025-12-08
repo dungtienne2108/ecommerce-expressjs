@@ -4,6 +4,7 @@ import { ValidationError } from '../errors/AppError';
 import { ApiResponse } from '../types/common';
 import { voucherService } from '../config/container';
 import { CreateVoucherInput } from '../types/voucher.types';
+import { logger } from '../services/logger';
 
 export class VoucherController {
   createVoucher = asyncHandler(async (req: Request, res: Response) => {
@@ -55,6 +56,32 @@ export class VoucherController {
       success: true,
       data: voucher,
       message: 'Lấy voucher thành công',
+    };
+    res.status(200).json(response);
+  });
+
+  getPublicVouchers = asyncHandler(async (req: Request, res: Response) => {
+    logger.info('getPublicVouchers', { module: 'VoucherController' });
+    const vouchers = await voucherService.getUserAvailableVouchers();
+    logger.info('getPublicVouchers', { module: 'VoucherController' }, { vouchers });
+    const response: ApiResponse = {
+      success: true,
+      data: vouchers,
+      message: 'Lấy danh sách voucher công khai thành công',
+    };
+    res.status(200).json(response);
+  });
+
+  getShopVouchers = asyncHandler(async (req: Request, res: Response) => {
+    const { shopId } = req.params;
+    if (!shopId) {
+      throw new ValidationError('Shop ID không hợp lệ');
+    }
+    const vouchers = await voucherService.getVoucherByShop(shopId);
+    const response: ApiResponse = {
+      success: true,
+      data: vouchers,
+      message: 'Lấy danh sách voucher của shop thành công',
     };
     res.status(200).json(response);
   });

@@ -55,6 +55,11 @@ export class ProductService {
       shop: {
         id: product.shop?.id ?? '',
         name: product.shop?.name ?? '',
+        address: product.shop?.city ?? '',
+        logoUrl: product.shop?.logoUrl ?? '',
+        rating: Number(product.shop?.rating),
+        reviewCount: Number(product.shop?.reviewCount),
+        createdAt: product.shop?.createdAt ?? '',
       },
       variants: product.variants?.map((variant) => ({
         id: variant.id,
@@ -106,6 +111,24 @@ export class ProductService {
     return productDetail;
   }
 
+  async findByShopId(shopId: string): Promise<ProductResponse[]> {
+    const products = await this.uow.products.findByShopId(shopId);
+
+    const productResponses: ProductResponse[] = products.map((product) => ({
+      id: product.id,
+      name: product.name,
+      shopId: product.shopId,
+      status: product.status,
+      averageRating: product.averageRating,
+      reviewCount: product.reviewCount,
+      createdAt: product.createdAt,
+      imageUrl: product.images?.[0]?.imageUrl ?? '',
+      price: Number(product.variants?.[0]?.price),
+    }));
+
+    return productResponses;
+  }
+
   async findMany(
     filters: ProductFilters
   ): Promise<PaginatedResponse<ProductResponse>> {
@@ -131,6 +154,8 @@ export class ProductService {
       createdAt: product.createdAt,
       imageUrl: product.images?.[0]?.imageUrl ?? '',
       price: Number(product.variants?.[0]?.price),
+      totalStock: product.variants?.reduce((acc, variant) => acc + (variant.stock ?? 0), 0),
+      soldCount: product.soldCount,
     }));
 
     const result = {

@@ -62,7 +62,7 @@ export class MessageService {
       this.uow.messages.findByConversationId(request.conversationId, {
         skip,
         take,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: 'asc' },
         include: {
           sender: true,
           conversation: true,

@@ -1,6 +1,7 @@
 import { Application, Request, Response, NextFunction } from 'express';
 import helmet from 'helmet';
 import express from 'express';
+import { logger } from '../services/logger';
 
 // Helmet configuration
 const helmetOptions = {
@@ -40,9 +41,21 @@ export const applyBasicMiddleware = (app: Application): void => {
 
   // Custom middleware for request logging
   app.use((req: Request, res: Response, next: NextFunction) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+    const startTime = Date.now();
+    
+    // Track response finish
+    const originalSend = res.send;
+    res.send = function(data) {
+      const duration = Date.now() - startTime;
+      logger.httpRequest(req.method, req.path, res.statusCode, duration, { 
+        module: 'HTTP',
+        requestId: (req as any).id 
+      });
+      return originalSend.call(this, data);
+    };
+    
     next();
   });
 
-  console.log('✅ Middleware cơ bản đã chạy thành công');
+  logger.info('Middleware cơ bản đã được load thành công', { module: 'Middleware' });
 };

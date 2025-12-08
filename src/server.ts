@@ -5,6 +5,8 @@ import { redis } from './config/redis';
 import { cashbackCronService, uow } from './config/container';
 import { SocketGateway } from './gateway/socket.gateway';
 import { SocketService } from './services/socket.service';
+import { logger } from './services/logger';
+import { cronJobsManager } from './cron-jobs';
 
 let server: http.Server;
 let socketGateway: SocketGateway;
@@ -21,9 +23,14 @@ export async function startServer(port: number) {
   SocketService.setGateway(socketGateway);
 
   server.listen(port, () => {
-    console.log(`🚀 Server chạy ở cổng :${port}`);
-    console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`Socket.IO is running`);
+    logger.info(`Server chạy thành công`, { module: 'Server' });
+    logger.info(`Port: ${port}`, { module: 'Server' });
+    logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`, { module: 'Server' });
+    logger.info(`Socket.IO is running`, { module: 'Socket.IO' });
+
+    // Start cron jobs
+    cronJobsManager.registerAll();
+    cronJobsManager.startAll();
 
     // chạy cronjobcashbackCronService.start();
     
@@ -36,9 +43,12 @@ export async function startServer(port: number) {
 }
 
 export async function stopServer() {
-  console.log('Dừng...');
+  logger.info('Đang dừng server...', { module: 'Server' });
   
- // cashbackCronService.stop();
+  // Stop cron jobs
+  cronJobsManager.stopAll();
+  
+  // cashbackCronService.stop();
 
   if (socketGateway) {
     socketGateway.getIO().close();
@@ -50,5 +60,7 @@ export async function stopServer() {
 
   await disconnectDatabase();
   try { await redis.disconnect(); } catch {  }
+  
+  logger.info('Server đã dừng', { module: 'Server' });
 }
   

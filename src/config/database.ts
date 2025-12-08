@@ -1,5 +1,6 @@
 import { Pool, PoolConfig } from 'pg';
 import dotenv from 'dotenv';
+import { logger } from '../services/logger';
 
 dotenv.config();
 
@@ -30,7 +31,7 @@ class Database {
     
     // Handle pool errors
     this.pool.on('error', (err) => {
-      console.error('Unexpected error on idle client:', err);
+      logger.error('Unexpected error on idle client:', err as Error, { module: 'Database Pool' });
       process.exit(-1);
     });
   }
@@ -45,10 +46,10 @@ class Database {
     try {
       const client = await this.pool.connect();
       const result = await client.query('SELECT NOW()');
-      console.log('✅ Kết nối PostgreSQL thành công:', result.rows[0].now);
+      logger.info(`Kết nối PostgreSQL thành công: ${result.rows[0].now}`, { module: 'PostgreSQL' });
       client.release();
     } catch (error) {
-      console.error('❌ Kết nối PostgreSQL thất bại:', error);
+      logger.error('Kết nối PostgreSQL thất bại:', error as Error, { module: 'PostgreSQL' });
       throw error;
     }
   }
@@ -56,11 +57,14 @@ class Database {
   // Execute query
   public async query(text: string, params?: any[]): Promise<any> {
     const client = await this.pool.connect();
+    const startTime = Date.now();
     try {
       const result = await client.query(text, params);
+      const duration = Date.now() - startTime;
+      logger.database('QUERY', 'postgresql', duration, { module: 'PostgreSQL' });
       return result;
     } catch (error) {
-      console.error('❌ Lỗi truy vấn cơ sở dữ liệu:', error);
+      logger.error('Lỗi truy vấn cơ sở dữ liệu:', error as Error, { module: 'PostgreSQL' });
       throw error;
     } finally {
       client.release();
@@ -70,7 +74,7 @@ class Database {
   // Close all connections
   public async close(): Promise<void> {
     await this.pool.end();
-    console.log('✅ Đã đóng kết nối PostgreSQL');
+    logger.info('Đã đóng kết nối PostgreSQL', { module: 'PostgreSQL' });
   }
 }
 

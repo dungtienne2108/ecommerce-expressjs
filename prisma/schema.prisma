@@ -499,6 +499,7 @@ model Product {
   averageRating Float         @default(0) @map("average_rating")
   reviewCount   Int           @default(0) @map("review_count")
   status        ProductStatus @default(DRAFT)
+  soldCount     Int            @default(0) @map("sold_count")
 
   // Auditable fields
   createdAt DateTime @default(now()) @map("created_at")

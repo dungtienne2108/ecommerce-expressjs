@@ -21,5 +21,7 @@ router.post(
 );
 router.get('/:id', voucherController.getById);
 router.get('/code/:code', voucherController.getByCode);
+router.get('/customer/public', voucherController.getPublicVouchers);
+router.get('/shop/:shopId', voucherController.getShopVouchers);
 
 export default router;

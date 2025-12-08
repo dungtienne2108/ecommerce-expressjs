@@ -6,7 +6,8 @@ import {
   VoucherType,
 } from '@prisma/client';
 import { IUnitOfWork } from '../repositories/interfaces/uow.interface';
-import { CreateVoucherInput, VoucherApplicationResult } from '../types/voucher.types';
+import { CreateVoucherInput, VoucherApplicationResult, VoucherResponse } from '../types/voucher.types';
+import { logger } from './logger';
 
 export class VoucherService {
   constructor(private uow: IUnitOfWork) {}
@@ -87,28 +88,50 @@ export class VoucherService {
     } as VoucherApplicationResult;
   }
 
-  async getVoucherByShop(shopId: string): Promise<Voucher[]> {
+  async getVoucherByShop(shopId: string): Promise<VoucherResponse[]> {
     return this.uow.vouchers.findByShopId(shopId, {
       status: VoucherStatus.ACTIVE,
-    });
+    }).then(vouchers => vouchers.map(this.mapVoucherToResponse));
   }
 
-  async getVoucherByCode(code: string): Promise<Voucher | null> {
-    return this.uow.vouchers.findByCode(code);
+  async getVoucherByCode(code: string): Promise<VoucherResponse | null> {
+    return this.uow.vouchers.findByCode(code).then(voucher => voucher ? this.mapVoucherToResponse(voucher) : null);
   }
 
-  async getVoucherById(voucherId: string): Promise<Voucher | null> {
-    return this.uow.vouchers.findById(voucherId);
+  async getVoucherById(voucherId: string): Promise<VoucherResponse | null> {
+    return this.uow.vouchers.findById(voucherId).then(voucher => voucher ? this.mapVoucherToResponse(voucher) : null);
   }
 
-  async createVoucher(data: CreateVoucherInput): Promise<Voucher> {
+  async createVoucher(data: CreateVoucherInput): Promise<VoucherResponse> {
     return this.uow.executeInTransaction(async (uow) => {
-      const voucher = await uow.vouchers.create(data);
-      return voucher;
+      return uow.vouchers.create(data).then(voucher => this.mapVoucherToResponse(voucher));
     });
   }
 
-  async getUserAvailableVouchers(userId: string): Promise<Voucher[]> {
-    return this.uow.vouchers.findPublicVouchers();
+  async getUserAvailableVouchers(): Promise<VoucherResponse[]> {
+    const vouchers = await this.uow.vouchers.findPublicVouchers();
+    logger.info('getUserAvailableVouchers', { module: 'VoucherService' }, { vouchers });
+    return vouchers.map(voucher => this.mapVoucherToResponse(voucher));
+  }
+
+  private mapVoucherToResponse(voucher: Voucher): VoucherResponse {
+    return {
+      id: voucher.id,
+      code: voucher.code,
+      name: voucher.name,
+      description: voucher.description ?? '',
+      type: voucher.type,
+      discountValue: Number(voucher.discountValue),
+      maxDiscount: Number(voucher.maxDiscount ?? 0),
+      minOrderValue: Number(voucher.minOrderValue ?? 0),
+      scope: voucher.scope,
+      shopId: voucher.shopId ?? null,
+      totalLimit: Number(voucher.totalLimit ?? 0),
+      usedCount: Number(voucher.usedCount ?? 0),
+      limitPerUser: Number(voucher.limitPerUser ?? 0),
+      startDate: voucher.startDate,
+      endDate: voucher.endDate,
+      status: voucher.status,
+    };
   }
 }

@@ -48,6 +48,7 @@ export class OrderController {
         status: req.query.status as OrderStatus,
         page: req.query.page ? parseInt(req.query.page as string, 10) : 1,
         limit: req.query.limit ? parseInt(req.query.limit as string, 10) : 10,
+        shopId: req.query.shopId as string,
       }
 
       const orders = await orderService.getOrders(filters);

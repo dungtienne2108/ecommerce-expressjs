@@ -81,6 +81,8 @@ export interface IProductRepository {
     id: string,
     include?: ProductIncludes
   ): Promise<ProductWithRelations | null>;
+
+  findByShopId(shopId: string): Promise<ProductWithRelations[]>;
   /**
    * Cập nhật thông tin sản phẩm
    * @param {string} id - ID của sản phẩm

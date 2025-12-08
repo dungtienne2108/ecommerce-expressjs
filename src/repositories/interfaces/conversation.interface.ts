@@ -23,6 +23,8 @@ export interface IConversationRepository {
 
   findByUserId(userId: string): Promise<ConversationWithInclude[]>;
 
+  findByUserIdAndShopId(userId: string, shopId: string): Promise<Conversation | null>;
+
   findById(id: string): Promise<ConversationWithInclude | null>;
 
   findByIdOrThrow(id: string): Promise<ConversationWithInclude>;

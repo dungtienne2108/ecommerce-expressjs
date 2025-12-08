@@ -10,6 +10,42 @@ import { ApiResponse } from '../types/common';
 import { asyncHandler } from '../middleware/errorHandler';
 
 export class ShopController {
+  findById = asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
+      const { id } = req.params;
+      if (!id) {
+        throw new ValidationError('Không tìm thấy cửa hàng');
+      }
+      const userId = req.user?.id;
+      if (!userId) {
+        throw new ValidationError('Không tìm thấy user');
+      }
+    const result = await shopService.findById(id);
+    const response: ApiResponse = {
+      success: true,
+      data: result,
+      message: 'Tìm thấy cửa hàng',
+    };
+    res.json(response);
+  });
+
+  findByOwnerId = asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
+      const userId = req.user?.id;
+      if (!userId) {
+        throw new ValidationError('Không tìm thấy user');
+      }
+
+      const result = await shopService.findByOwnerId(userId);
+      const response: ApiResponse = {
+        success: true,
+        data: result,
+        message: 'Tìm thấy cửa hàng',
+      };
+      res.json(response);
+    }
+  );
+
   createDraftShop = asyncHandler(
     async (req: Request, res: Response): Promise<void> => {
       const { error, value } = createDraftShopSchema.validate(req.body);
