@@ -477,9 +477,9 @@ export class PaymentService {
       failureReason: payment.failureReason,
       note: payment.note,
       cashback: {
-        id: payment.cashback.id,
-        amount: Number(payment.cashback.amount),
-        status: payment.cashback.status,
+        id: payment.cashback?.id || null,
+        amount: Number(payment.cashback?.amount),
+        status: payment.cashback?.status,
       },
       createdAt: payment.createdAt,
       updatedAt: payment.updatedAt,

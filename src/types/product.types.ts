@@ -191,6 +191,7 @@ export interface CreateProductVariantInput {
   name: string;
   value: string;
   price: number;
+  stock: number;
   currency?: string;
   description?: string;
   imageUrls?: string[];

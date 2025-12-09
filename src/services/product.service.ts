@@ -139,6 +139,7 @@ export class ProductService {
       return null;
     });
     if (cacheResult) {
+      console.log('cacheResult', cacheResult);
       return JSON.parse(cacheResult);
     }
 
@@ -365,6 +366,7 @@ export class ProductService {
           name: variantData.name,
           value: variantData.value,
           price: variantData.price,
+          stock: variantData.stock,
           currency: 'VND',
           description: variantData.description ?? null,
           status: ProductStatus.DRAFT,

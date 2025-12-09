@@ -11,6 +11,7 @@ import categoryRoutes from './category.route';
 import paymentRoutes from './payment.routes';
 import chatRoutes from './chat.route';
 import voucherRoutes from './voucher.routes';
+import analyticsRoutes from './analytics.routes';
 
 const router = Router();
 
@@ -44,5 +45,6 @@ router.use('/api/categories', categoryRoutes);
 router.use('/api/payments', paymentRoutes);
 router.use('/api/chat', chatRoutes);
 router.use('/api/vouchers', voucherRoutes);
+router.use('/api', analyticsRoutes);
 
 export default router;

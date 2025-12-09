@@ -3,6 +3,7 @@ import {
   PaymentMethod,
   PaymentStatus,
   Prisma,
+  RoleType,
   VoucherType,
 } from '@prisma/client';
 import {
@@ -127,10 +128,10 @@ export class OrderService {
           throw new ValidationError(voucherResult.error || 'Voucher không hợp lệ');
         }
 
-        if (voucherResult.type === VoucherType.FREE_SHIPPING){
+        if (voucherResult.type === VoucherType.FREE_SHIPPING) {
           shippingFee = 0;
         }
-        else{
+        else {
           discount = voucherResult.discountAmount;
         }
 
@@ -167,7 +168,7 @@ export class OrderService {
         redis.del(CacheUtil.cartByUserId(userId)),
       ];
 
-      if (voucherId){
+      if (voucherId) {
         promises.push(
           uow.vouchers.incrementUsedCount(voucherId),
           uow.orders.update(order.id, { voucher: { connect: { id: voucherId } } }),
@@ -277,7 +278,16 @@ export class OrderService {
     const order = await this.uow.orders.findByIdWithItems(orderId);
     if (!order) throw new NotFoundError('Đơn hàng không tồn tại');
     if (userId && order.userId !== userId) {
-      // nếu không phải chủ đơn hàng, kiểm tra có phải chủ shop không
+      // nếu không phải chủ đơn hàng, kiểm tra có phải chủ shop hoặc admin không
+      const roles = await this.uow.userRoles.findByUserIdWithRoles(userId);
+      const isAdmin = roles.some((r) => r.role.type === RoleType.SYSTEM_ADMIN);
+
+      // Nếu là admin → cho xem luôn → return
+      if (isAdmin) {
+        return this.mapToOrderResponse(order);
+      }
+
+      // Nếu không phải admin → check tiếp shop owner
       const shop = await this.uow.shops.findById(order.shopId);
       if (!shop || shop.ownerId !== userId) {
         throw new ForbiddenError('Bạn không có quyền xem đơn hàng này');
@@ -487,7 +497,7 @@ export class OrderService {
       if (!result) throw new NotFoundError('Đơn hàng không tồn tại');
 
       // Invalidate cache
-      await this.invalidateOrderCache(result.userId, result.shopId, orderId);
+      // await this.invalidateOrderCache(result.userId, result.shopId, orderId);
 
       return this.mapToOrderResponse(result);
     });
@@ -528,18 +538,6 @@ export class OrderService {
    * @returns
    */
   async confirmOrder(orderId: string, ownerId: string): Promise<OrderResponse> {
-    const order = await this.uow.orders.findById(orderId, { shop: true });
-    if (!order) throw new NotFoundError('Đơn hàng không tồn tại');
-
-    const shop = await this.uow.shops.findById(order.shopId);
-    if (!shop || shop.ownerId !== ownerId) {
-      throw new ForbiddenError('Bạn không có quyền xác nhận đơn hàng này');
-    }
-
-    if (order.status !== OrderStatus.PENDING) {
-      throw new ValidationError('Chỉ có thể xác nhận đơn hàng đang chờ xử lý');
-    }
-
     return this.updateOrderStatus(
       orderId,
       { status: OrderStatus.CONFIRMED },

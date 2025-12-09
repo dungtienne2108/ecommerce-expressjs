@@ -2,14 +2,16 @@ import http from 'http';
 import { createApp } from './app';
 import { testDatabaseConnection, disconnectDatabase } from './config/prisma';
 import { redis } from './config/redis';
-import { cashbackCronService, uow } from './config/container';
+import { cashbackCronService, uow, analyticsService } from './config/container';
 import { SocketGateway } from './gateway/socket.gateway';
 import { SocketService } from './services/socket.service';
 import { logger } from './services/logger';
 import { cronJobsManager } from './cron-jobs';
+import { AnalyticsEventsEmitter } from './gateway/analytics-events.emitter';
 
 let server: http.Server;
 let socketGateway: SocketGateway;
+let analyticsEventsEmitter: AnalyticsEventsEmitter;
 
 export async function startServer(port: number) {
   // Kết nối phụ trợ trước khi lắng nghe
@@ -21,6 +23,8 @@ export async function startServer(port: number) {
 
   socketGateway = new SocketGateway(server, uow);
   SocketService.setGateway(socketGateway);
+  analyticsEventsEmitter = new AnalyticsEventsEmitter(socketGateway.getIO(), analyticsService);
+  analyticsEventsEmitter.start();// Start emitting real-time updates
 
   server.listen(port, () => {
     logger.info(`Server chạy thành công`, { module: 'Server' });
@@ -52,6 +56,9 @@ export async function stopServer() {
 
   if (socketGateway) {
     socketGateway.getIO().close();
+  }
+  if (analyticsEventsEmitter) {
+    analyticsEventsEmitter.stop();// Stop emitting real-time updates
   }
 
   await new Promise<void>((resolve) =>

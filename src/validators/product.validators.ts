@@ -54,6 +54,7 @@ const createProductVariantSchema = Joi.object({
   name: Joi.string().trim().min(1).max(100).required(),
   value: Joi.string().trim().min(1).max(100).required(),
   price: Joi.number().positive().precision(2).required(),
+  stock: Joi.number().integer().min(0).required(),
   currency: Joi.string().length(3).uppercase().default('VND'),
   imageUrls: Joi.array().items(Joi.string().uri()).optional(),
   description: Joi.string().max(1000).optional().allow(null, ''),

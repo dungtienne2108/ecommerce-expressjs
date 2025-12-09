@@ -2,7 +2,7 @@ import { IOrderRepository } from '../interfaces/order.interface';
 import { Order, OrderItem, OrderStatus, PaymentStatus, Prisma, PrismaClient } from '@prisma/client';
 import { OrderIncludes } from '../../types/order.types';
 export class OrderRepository implements IOrderRepository {
-  constructor(private prisma: PrismaClient) {}
+  constructor(private prisma: PrismaClient) { }
 
   async create(data: Prisma.OrderCreateInput): Promise<Order> {
     return this.prisma.order.create({ data });
@@ -100,7 +100,7 @@ export class OrderRepository implements IOrderRepository {
     status: OrderStatus,
     note?: string,
     changedBy?: string
-  ): Promise<Order> {
+  ) {
     // Lấy status hiện tại
     const currentOrder = await this.prisma.order.findUnique({
       where: { id },
@@ -108,39 +108,34 @@ export class OrderRepository implements IOrderRepository {
     });
 
     if (!currentOrder) {
-      throw new Error('Order not found');
+      throw new Error("Order not found");
     }
 
-    // Update order và tạo history trong transaction
-    return this.prisma.$transaction(async (tx) => {
-      // Update order status
-      const updatedOrder = await tx.order.update({
-        where: { id },
-        data: {
-          status,
-          updatedBy: changedBy ?? null,
-          // Cập nhật các timestamp tương ứng
-          ...(status === 'CONFIRMED' && { confirmedAt: new Date() }),
-          ...(status === 'SHIPPING' && { shippedAt: new Date() }),
-          ...(status === 'DELIVERED' && { deliveredAt: new Date() }),
-          ...(status === 'COMPLETED' && { completedAt: new Date() }),
-          ...(status === 'CANCELLED' && { cancelledAt: new Date() }),
-        },
-      });
-
-      // Tạo history record
-      await tx.orderStatusHistory.create({
-        data: {
-          orderId: id,
-          fromStatus: currentOrder.status,
-          toStatus: status,
-          note: note ?? null,
-          changedBy: changedBy ?? null,
-        },
-      });
-
-      return updatedOrder;
+    const updatedOrder = await this.prisma.order.update({
+      where: { id },
+      data: {
+        status,
+        updatedBy: changedBy ?? null,
+        ...(status === "CONFIRMED" && { confirmedAt: new Date() }),
+        ...(status === "SHIPPING" && { shippedAt: new Date() }),
+        ...(status === "DELIVERED" && { deliveredAt: new Date() }),
+        ...(status === "COMPLETED" && { completedAt: new Date() }),
+        ...(status === "CANCELLED" && { cancelledAt: new Date() }),
+      },
     });
+
+    // Tạo lịch sử
+    await this.prisma.orderStatusHistory.create({
+      data: {
+        orderId: id,
+        fromStatus: currentOrder.status,
+        toStatus: status,
+        note: note ?? null,
+        changedBy: changedBy ?? null,
+      },
+    });
+
+    return updatedOrder;
   }
 
   async count(where?: Prisma.OrderWhereInput): Promise<number> {
@@ -149,7 +144,7 @@ export class OrderRepository implements IOrderRepository {
 
   async sumRevenue(where?: Prisma.OrderWhereInput): Promise<number> {
     const result = await this.prisma.order.aggregate({
-     ...(where && { where }),
+      ...(where && { where }),
       _sum: {
         totalAmount: true,
       },
