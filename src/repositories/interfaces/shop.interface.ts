@@ -199,4 +199,11 @@ export interface IShopRepository {
    * @returns Promise trả về số lượng cửa hàng có trạng thái tương ứng
    */
   countByStatus(status: ShopStatus): Promise<number>;
+
+  /**
+   * Tìm 5 cửa hàng có rating cao nhất
+   * @param limit - Số lượng cửa hàng cần lấy (mặc định 5)
+   * @returns Promise trả về mảng các cửa hàng được sắp xếp theo rating giảm dần
+   */
+  findTopRatedShops(limit?: number): Promise<Shop[]>;
 }

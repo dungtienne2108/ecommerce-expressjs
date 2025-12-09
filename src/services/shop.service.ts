@@ -310,6 +310,30 @@ export class ShopService {
     });
   }
 
+  async findTopRatedShops(limit: number = 5): Promise<ShopResponse[]> {
+    const cacheKey = CacheUtil.shopList() + ':top-rated';
+    const cachedShops = await redis.get(cacheKey);
+    if (cachedShops) {
+      return JSON.parse(cachedShops);
+    }
+
+    const shops = await this.uow.shops.findTopRatedShops(limit);
+    const shopResponses = shops.map(shop => ({
+      id: shop.id,
+      name: shop.name,
+      category: shop.category,
+      logoUrl: shop.logoUrl,
+      rating: Number(shop.rating),
+      reviewCount: Number(shop.reviewCount),
+      createdAt: shop.createdAt,
+    } as ShopResponse));
+
+    // Lưu vào cache 1 giờ
+    await redis.set(cacheKey, JSON.stringify(shopResponses), 3600);
+
+    return shopResponses;
+  }
+
   // ==================== PRIVATE METHODS ====================
   /**
    * Invalidate cache liên quan đến shop

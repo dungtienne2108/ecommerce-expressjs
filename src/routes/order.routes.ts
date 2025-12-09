@@ -21,7 +21,7 @@ router.get(
   combineMiddleware(
     authenticateToken,
     requireStatus([UserStatus.ACTIVE]),
-    requireRole(RoleType.SYSTEM_ADMIN)
+    requireRole(RoleType.SYSTEM_ADMIN, RoleType.SELLER)
   ),
   orderController.getOrders
 );

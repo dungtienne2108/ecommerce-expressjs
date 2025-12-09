@@ -16,6 +16,15 @@ import { productController } from '../controllers/product.controller';
 const router = Router();
 
 router.get(
+  '/top-rated/list',
+  combineMiddleware(
+    authenticateToken,
+    requireStatus([UserStatus.ACTIVE]),
+  ),
+  shopController.findTopRatedShops
+);
+
+router.get(
   '/:id',
   combineMiddleware(
     authenticateToken,
@@ -25,7 +34,7 @@ router.get(
 );
 
 router.get(
-  '/user',
+  '/owner/me',
   combineMiddleware(
     authenticateToken,
     requireStatus([UserStatus.ACTIVE]),

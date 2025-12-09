@@ -323,4 +323,18 @@ export class ShopRepository implements IShopRepository {
     });
     return shop;
   }
+
+  async findTopRatedShops(limit: number = 5): Promise<Shop[]> {
+    const shops = await this.prisma.shop.findMany({
+      where: {
+        deletedAt: null,
+        status: 'ACTIVE',
+      },
+      orderBy: {
+        rating: 'desc',
+      },
+      take: limit,
+    });
+    return shops;
+  }
 }

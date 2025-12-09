@@ -206,6 +206,20 @@ export class ShopController {
     };
     res.json(response);
   });
+
+  findTopRatedShops = asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 5;
+      
+      const result = await shopService.findTopRatedShops(limit);
+      const response: ApiResponse = {
+        success: true,
+        data: result,
+        message: 'Lấy danh sách shop có rating cao nhất thành công',
+      };
+      res.json(response);
+    }
+  );
 }
 
 export const shopController = new ShopController();
