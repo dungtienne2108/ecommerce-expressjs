@@ -21,7 +21,7 @@ export function createApp(): Application {
   applyBasicMiddleware(app);
 
   // 3) Rate limiting chung
-  app.use(generalRateLimiter);
+  // app.use(generalRateLimiter);
 
   // 4) Routes
   app.use('/', rootRouter);
