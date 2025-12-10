@@ -2,6 +2,8 @@
 import Joi from 'joi';
 import { OrderStatus, PaymentMethod, PaymentStatus, ShippingMethod } from '@prisma/client';
 
+const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+
 export const createOrderSchema = Joi.object({
   shippingMethod: Joi.string()
     .valid(...Object.values(ShippingMethod))
@@ -25,10 +27,10 @@ export const createOrderSchema = Joi.object({
 
   recipientPhone: Joi.string()
     .required()
-    .pattern(/^[0-9]{10}$/)
+    .pattern(phoneRegex)
     .messages({
       'any.required': 'Số điện thoại người nhận là bắt buộc',
-      'string.pattern.base': 'Số điện thoại phải có 10 chữ số',
+      'string.pattern.base': 'Số điện thoại không hợp lệ',
     }),
 
   paymentMethod: Joi.string()
