@@ -22,4 +22,6 @@ router.get(
 );
 router.put('/activate', authenticateToken, userController.activate);
 
+router.put('/profile', combineMiddleware(authenticateToken, requireStatus([UserStatus.ACTIVE])), userController.updateUser);
+
 export default router;

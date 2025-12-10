@@ -289,17 +289,18 @@ export class UserService {
       if (data.phoneNumber !== undefined)
         updateData.phoneNumber = data.phoneNumber || null;
       if (data.address !== undefined) updateData.address = data.address || null;
-      if (data.birthday !== undefined)
-        updateData.birthday = data.birthday || null;
-      if (data.gender !== undefined) updateData.gender = data.gender || null;
+      if (data.birthday !== undefined){
+        updateData.birthday = data.birthday ? new Date(data.birthday) : null;
+      }
+      if (data.gender !== undefined) updateData.gender = data.gender ? (data.gender as Gender) : null;
       if (data.avatarUrl !== undefined)
         updateData.avatarUrl = data.avatarUrl || null;
-      if (data.status) updateData.status = data.status;
+      if (data.status) updateData.status = data.status as UserStatus;
 
       const updatedUser = await uow.users.update({ id }, updateData);
 
       // Invalidate cache
-      await this.invalidateUserCache(id);
+      // await this.invalidateUserCache(id);
 
       return this.excludeSensitiveData(updatedUser);
     });

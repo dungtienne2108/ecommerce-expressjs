@@ -1,8 +1,8 @@
 import { Gender, UserStatus } from '@prisma/client';
 import Joi from 'joi';
 
-const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
-const nameRegex = /^[a-zA-ZÀ-ÿ\s'-]+$/;
+const phoneRegex = /^(?:\+84|0)(3|5|7|8|9)\d{8}$/;
+const nameRegex = /^[\p{L}\s'-]+$/u;
 
 export const createUserSchema = Joi.object({
   email: Joi.string()
@@ -106,23 +106,19 @@ export const updateUserSchema = Joi.object({
   firstName: Joi.string()
     .min(2)
     .max(50)
-    .pattern(nameRegex)
     .optional()
     .messages({
       'string.min': 'Họ tên phải có ít nhất 2 ký tự',
       'string.max': 'Họ tên không được vượt quá 50 ký tự',
-      'string.pattern.base': 'Họ tên chỉ có thể chứa chữ cái, khoảng trắng, dấu gạch ngang và dấu nháy đơn',
     }),
 
   lastName: Joi.string()
     .min(2)
     .max(50)
-    .pattern(nameRegex)
     .optional()
     .messages({
       'string.min': 'Họ tên phải có ít nhất 2 ký tự',
       'string.max': 'Họ tên không được vượt quá 50 ký tự',
-      'string.pattern.base': 'Họ tên chỉ có thể chứa chữ cái, khoảng trắng, dấu gạch ngang và dấu nháy đơn',
     }),
 
   phoneNumber: Joi.string()

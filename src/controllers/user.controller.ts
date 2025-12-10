@@ -5,6 +5,7 @@ import { Request, Response, NextFunction } from 'express';
 import { ApiResponse } from '../types/common';
 import { UserSearchFilters } from '../types/user.types';
 import { Gender, UserStatus } from '@prisma/client';
+import { updateUserSchema } from '../validators/user.validators';
 
 export class UserController {
   getUserById = asyncHandler(
@@ -81,6 +82,26 @@ export class UserController {
       res.json(response);
     }
   );
+
+  updateUser = asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
+      const userId = req.user?.id;
+      if (!userId) {
+        throw new ValidationError('User chưa đăng nhập');
+      }
+      const { error, value } = updateUserSchema.validate(req.body);
+      if (error) {
+        throw new ValidationError(error.details?.[0]?.message || 'Validation error');
+      }
+      const user = await userService.updateUser(userId, value);
+
+      const response: ApiResponse = {
+        success: true,
+        data: user,
+        message: 'Cập nhật thông tin user thành công',
+      };
+      res.json(response);
+    });
 }
 
 export const userController = new UserController();
