@@ -12,11 +12,11 @@ export class UpdateProductSoldCountCronJob extends BaseCronJob {
   constructor() {
     super({
       name: 'UpdateProductSoldCount',
-      schedule: '* * * * *', // Chạy mỗi 1 phút
+      schedule: '*/10 * * * *', // Chạy mỗi 10 phút
       enabled: true,
       runOnStart: false,
     });
-  }
+  }  
 
   /**
    * Execute the cron job - update soldCount for all products
